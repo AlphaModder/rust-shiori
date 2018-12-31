@@ -31,14 +31,14 @@ pub enum RequestKind<'u> {
     OnCloseAll(OnCloseAll),
     OnGhostChanged(OnGhostChanged<'u>),
     OnGhostChanging(OnGhostChanging<'u>),
-    Other(&'u UntypedReq),
+    Other,
 }
 
 impl<'u> RequestKind<'u> {
     fn from_untyped(untyped: &'u UntypedReq) -> Self {
         use self::RequestKind::*;
         match untyped.get_field("ID").unwrap_or("") {
-            _ => Other(untyped)
+            _ => Other
         }
     }
 }
@@ -72,5 +72,5 @@ pub struct OnGhostCalled {
 
 pub trait RequestType: Sized {
     const ID: &'static str;
-    fn from_untyped(untyped: &UntypedReq) -> Option<Self>;
+    fn from_untyped(untyped: &UntypedReq) -> Result<Self, ()>;
 }

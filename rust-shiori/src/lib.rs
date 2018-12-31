@@ -1,6 +1,10 @@
 extern crate winapi;
 extern crate regex;
+#[macro_use] extern crate rust_shiori_macros;
 #[macro_use] extern crate lazy_static;
+
+#[doc(hidden)]
+pub use rust_shiori_macros::*;
 
 pub const SHIORI_VERSION: &str = "3.0";
 

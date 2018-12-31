@@ -78,3 +78,25 @@ impl Request {
         typed::TypedRequest::from_untyped(self)
     }
 }
+
+pub trait FromRequestField<'a>: Sized {
+    fn from_request_field(value: Option<&'a str>) -> Result<Self, ()>;
+}
+
+impl<'a> FromRequestField<'a> for &'a str {
+    fn from_request_field(value: Option<&'a str>) -> Result<Self, ()> {
+        match value {
+            Some(s) => Ok(s),
+            None => Err(())
+        }
+    }
+}
+
+impl<'a, T> FromRequestField<'a> for Option<T> where T: FromRequestField<'a> {
+    fn from_request_field(value: Option<&'a str>) -> Result<Self, ()> {
+        match value {
+            Some(v) => T::from_request_field(Some(v)).map(|r| Some(r)),
+            None => Ok(None),
+        }
+    }
+}
