@@ -43,13 +43,15 @@ impl<'u> RequestKind<'u> {
     }
 }
 
-pub struct OnFirstBoot { pub times_uninstalled: usize }
+#[derive(RequestType)]
+pub struct OnFirstBoot { #[shiori(field = "Reference0")] pub times_uninstalled: usize }
 pub struct OnBoot<'u> { pub shell: &'u str }
 
 pub enum CloseReason { User, System }
 pub struct OnClose { pub reason: CloseReason }
 pub struct OnCloseAll { pub reason: CloseReason }
 
+#[derive(RequestType)]
 pub struct OnGhostChanged<'u> {
     pub last_ghost_sakura: &'u str,
     pub last_script: &'u str,
@@ -70,7 +72,7 @@ pub struct OnGhostCalled {
 
 }
 
-pub trait RequestType: Sized {
+pub trait RequestType<'u>: Sized {
     const ID: &'static str;
-    fn from_untyped(untyped: &UntypedReq) -> Result<Self, ()>;
+    fn from_untyped(untyped: &'u UntypedReq) -> Result<Self, ()>;
 }

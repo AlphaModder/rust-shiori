@@ -100,3 +100,34 @@ impl<'a, T> FromRequestField<'a> for Option<T> where T: FromRequestField<'a> {
         }
     }
 }
+
+macro_rules! from_request_parse {
+    { $($name:ty),* } => {
+        $(impl<'a> FromRequestField<'a> for $name {
+            fn from_request_field(value: Option<&'a str>) -> Result<Self, ()> {
+                match value.map(|s| s.parse()) {
+                    Some(Ok(v)) => Ok(v),
+                    _ => Err(())
+                }
+            }
+        })*
+    }
+}
+
+from_request_parse! {
+    u8,
+    u16,
+    u32,
+    u64,
+    u128,
+    usize,
+    i8,
+    i16,
+    i32,
+    i64,
+    i128,
+    isize,
+    char
+}
+
+
