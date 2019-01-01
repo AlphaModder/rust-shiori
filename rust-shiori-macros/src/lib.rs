@@ -95,8 +95,8 @@ mod request_type {
             syn::Data::Enum(_) => panic!("#[derive(RequestType)] does not support enums!"),
         };
 
-        let initializer = fields.map(
-            |f| { 
+        let initializer = match fields {
+            Some(f) => {
                 let mut punc = syn::punctuated::Punctuated::<_, Token![,]>::new();
                 punc.extend(f.iter_mut().map(|f| {
                     let field_ident = &f.ident;
@@ -124,7 +124,8 @@ mod request_type {
                 }));
                 make_init(punc)
             }
-        );
+            None => quote! { #name }
+        };
 
         let (_, ty_generics, where_clause) = ast.generics.split_for_impl();
 
