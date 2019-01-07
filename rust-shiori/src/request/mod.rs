@@ -66,6 +66,10 @@ impl Request {
         &self.version
     }
 
+    pub fn fields(&self) -> &HashMap<String, String> {
+        &self.fields
+    }
+
     pub fn fields_iter(&self) -> impl Iterator<Item=&str> {
         return self.fields.keys().map(|s| s.as_str())
     }

@@ -5,12 +5,16 @@ use crate::{Request, Response, SHIORI_VERSION};
 pub use winapi::ctypes::c_long;
 pub use winapi::shared::minwindef::{BOOL, HGLOBAL};
 
+//TODO: Proper encoding handling.
+
 pub unsafe fn load(path: HGLOBAL, len: c_long, PATH: &'static mut Option<String>) -> BOOL {
-    let path = std::str::from_utf8(std::slice::from_raw_parts(path as *const u8, len as usize));
-    match path {
-        Ok(s) => { *PATH = Some(s.to_string()); return TRUE }
-        Err(_) => return FALSE
-    }
+    let path_str = std::str::from_utf8(std::slice::from_raw_parts(path as *const u8, len as usize));
+    let result = match path_str {
+        Ok(s) => { *PATH = Some(s.to_string()); TRUE }
+        Err(_) => FALSE
+    };
+    GlobalFree(path);
+    result
 }
 
 pub fn unload() -> BOOL {

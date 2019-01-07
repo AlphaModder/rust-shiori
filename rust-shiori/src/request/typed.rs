@@ -61,7 +61,11 @@ pub trait RequestType<'u>: Sized {
 pub struct OnFirstBoot { #[shiori(field = "Reference0")] pub times_uninstalled: usize }
 
 #[derive(RequestType)]
-pub struct OnBoot<'u> { #[shiori(field = "Reference0")] pub shell: &'u str }
+pub struct OnBoot<'u> { 
+    #[shiori(field = "Reference0")] pub shell: &'u str, 
+    // TODO: #[shiori(field = "Reference6")] pub ???: Option<&'u str>,
+    // TODO: #[shiori(field = "Reference7")] pub ???: Option<&'u str>,
+}
 
 pub enum CloseReason { User, System }
 
@@ -181,7 +185,8 @@ pub struct OnShellChanging<'u> {
 pub struct OnDressupChanged<'u> {
     #[shiori(field = "Reference0")] pub character: &'u str,
     #[shiori(field = "Reference1")] pub part: &'u str, 
-    #[shiori(field = "Reference2")] pub new_shell_path: Option<&'u str>,
+    #[shiori(field = "Reference2")] pub valid: usize, // 1 if valid, 0 if not.
+    #[shiori(field = "Reference3")] pub category: Option<&'u str>,
 }
 
 #[derive(RequestType)]
@@ -201,3 +206,6 @@ pub struct OnFullScreenAppMinimize;
 
 #[derive(RequestType)]
 pub struct OnFullScreenAppRestore;
+
+//TODO: OnVirtualDesktopChanged
+

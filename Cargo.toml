@@ -1,5 +1,6 @@
 [workspace]
 members = [
     "rust-shiori",
+    "rust-shiori-lua",
     "rust-shiori-macros",
 ]
