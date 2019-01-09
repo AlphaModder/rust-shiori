@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use std::str::FromStr;
+
+use lazy_static::lazy_static;
 use regex::Regex;
 
 pub mod typed;

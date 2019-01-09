@@ -1,12 +1,4 @@
-extern crate winapi;
-extern crate regex;
-#[macro_use] extern crate rust_shiori_macros;
-#[macro_use] extern crate lazy_static;
-
-#[doc(hidden)]
-pub use rust_shiori_macros::*;
-
-pub const SHIORI_VERSION: &str = "3.0";
+use std::path::PathBuf;
 
 pub mod request;
 pub mod response;
@@ -17,27 +9,35 @@ pub mod internals;
 pub use self::request::Request;
 pub use self::response::Response;
 
+pub const SHIORI_VERSION: &str = "3.0";
+
 /// This macro turns a rust crate into a SHIORI DLL. The crate must be a `dylib` or a `cdylib` for it work.
-/// Its only argument is the path to the function that will be used to respond to SHIORI requests.
-/// The type of this function must be `fn([Request](Request)) -> [Response](Response)`.
+/// Its only argument is a type implementing the `Shiori` trait, which will serve as the SHIORI's implementation.
 #[macro_export]
 macro_rules! shiori {
-    {$request:path} => {
-        static mut PATH: Option<String> = None;
+    {$shiori:ty} => {
+        static mut SHIORI: Option<$shiori> = None;
 
         #[no_mangle]
         pub unsafe extern "C" fn load(path: $crate::internals::HGLOBAL, len: $crate::internals::c_long) -> $crate::internals::BOOL {
-            $crate::internals::load(path, len, &mut PATH)
+            $crate::internals::load(path, len, &mut SHIORI)
         }
 
         #[no_mangle]
-        pub extern "C" fn unload() -> $crate::internals::BOOL {
-            $crate::internals::unload()
+        pub unsafe extern "C" fn unload() -> $crate::internals::BOOL {
+            $crate::internals::unload(&mut SHIORI)
         }
 
         #[no_mangle]
         pub unsafe extern "C" fn request(request: $crate::internals::HGLOBAL, len: *mut $crate::internals::c_long) -> $crate::internals::HGLOBAL {
-            $crate::internals::request(request, len, $request)
+            $crate::internals::request(request, len, &mut SHIORI)
         }
     }
+}
+
+pub trait Shiori {
+    type LoadError;
+    fn load(path: PathBuf) -> Result<Self, Self::LoadError> where Self: Sized;
+    fn respond(&mut self, request: Request) -> Response;
+    fn unload(&mut self) { }
 }

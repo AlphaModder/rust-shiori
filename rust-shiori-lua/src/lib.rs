@@ -1,26 +1,26 @@
 #![crate_type = "cdylib"]
 extern crate config as config_rs;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStrExt;
 use std::borrow::Borrow;
 
 use rust_shiori::{
-    shiori, 
+    shiori, Shiori,
     request::{Request, Method},
     response::{Response, ResponseStatus, ResponseBuilder}
 };
 
-use rlua::{Lua, Table, Function, Value, FromLua};
+use rlua::{Lua, Table, Function};
 
 mod config;
 mod error;
 
-use self::error::{LoadError, RespondError};
+use self::error::LoadError;
 use self::config::Config;
 
-shiori! { respond }
+shiori!(LuaShiori);
 
 pub struct LuaShiori {
     path: PathBuf,
@@ -29,8 +29,9 @@ pub struct LuaShiori {
     lua: Lua,
 }
 
-impl LuaShiori {
-    pub fn load(path: PathBuf) -> Result<Self, LoadError> {
+impl Shiori for LuaShiori {
+    type LoadError = LoadError;
+    fn load(path: PathBuf) -> Result<Self, LoadError> {
         fn write_utf16<'a, W: byteorder::WriteBytesExt>(container: &mut W, utf16: impl IntoIterator<Item=impl Borrow<u16>>) {
             for c in utf16 {
                 container.write_u16::<byteorder::NativeEndian>(*c.borrow()).unwrap();
@@ -66,7 +67,7 @@ impl LuaShiori {
         })
     }
 
-    pub fn respond(&mut self, request: Request) -> Response {
+    fn respond(&mut self, request: Request) -> Response {
         let mut response = ResponseBuilder::new().with_field("Charset", "UTF-8");
 
         let respond_raw = || -> Result<(Option<String>, u32), rlua::Error> {
@@ -92,12 +93,4 @@ impl LuaShiori {
         }
         response.build().unwrap()
     }
-
-    pub fn unload(&mut self) {
-
-    }
-}
-
-pub fn respond(request: Request) -> Response {
-    unimplemented!()
 }
