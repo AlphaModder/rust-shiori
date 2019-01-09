@@ -17,14 +17,3 @@ impl From<LuaError> for LoadError {
         LoadError::LuaError(error)
     }
 }
-
-pub enum RespondError {
-    LuaError(LuaError),
-    ScriptError(LuaError),
-}
-
-impl From<LuaError> for RespondError {
-    fn from(error: LuaError) -> Self {
-        RespondError::LuaError(error)
-    }
-}

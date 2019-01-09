@@ -23,6 +23,18 @@ impl ResponseStatus {
         }.to_string()
     }
 
+    pub fn from_code(code: u32) -> Result<Self, ()> {
+        match code {
+            200 => Ok(ResponseStatus::OK),
+            204 => Ok(ResponseStatus::NoContent),
+            311 => Ok(ResponseStatus::NotEnough),
+            312 => Ok(ResponseStatus::Advice),
+            400 => Ok(ResponseStatus::BadRequest),
+            500 => Ok(ResponseStatus::InternalServerError),
+            _ => Err(())
+        }
+    }
+
     pub fn is_error(&self) -> bool {
         match self {
             ResponseStatus::BadRequest | ResponseStatus::InternalServerError => true,
