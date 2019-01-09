@@ -1,6 +1,8 @@
 use serde::Deserialize;
-use config_rs::{Config as RawConfig, File, FileFormat, ConfigError};
+use config::{Config as RawConfig, File, FileFormat};
 use std::path::{Path, PathBuf};
+
+pub use config::ConfigError;
 
 #[derive(Deserialize)]
 pub struct Config {

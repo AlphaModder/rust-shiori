@@ -1,6 +1,3 @@
-#![crate_type = "cdylib"]
-extern crate config as config_rs;
-
 use std::path::PathBuf;
 use std::ffi::OsString;
 use std::os::windows::ffi::OsStrExt;
@@ -15,9 +12,6 @@ use rust_shiori::{
 use rlua::{Lua, Table, Function};
 
 mod config;
-mod error;
-
-use self::error::LoadError;
 use self::config::Config;
 
 shiori!(LuaShiori);
@@ -39,8 +33,9 @@ impl Shiori for LuaShiori {
         }
 
         let config = Config::try_load(&path.join("shiori.toml"))?;
-        let lua = {
-            let lua = Lua::new();
+        let lua = Lua::new();
+        {
+            let package: Table = lua.globals().get("package")?;
             let separator = OsString::from(";").encode_wide().collect::<Vec<u16>>();
             let path_string = lua.create_string(
                 &config.search_paths.iter()
@@ -53,9 +48,9 @@ impl Shiori for LuaShiori {
                         vec
                     })
                 )?;
-            lua.globals().get::<_, Table>("package")?.set("path", path_string)?;
-            lua
-        };
+            package.set("path", path_string)?;
+            package.get::<_, Table>("preload")?.set("shiori", lua.exec::<_, Table>(include_str!("lua/shiori.lua"), Some("shiori library"))?)?;
+        }
         
         let responder = lua.create_registry_value(lua.exec::<_, Function>(include_str!("lua/runtime.lua"), Some("shiori runtime"))?)?;
 
@@ -92,5 +87,22 @@ impl Shiori for LuaShiori {
             }
         }
         response.build().unwrap()
+    }
+}
+
+pub enum LoadError {
+    ConfigError(config::ConfigError),
+    LuaError(rlua::Error),
+}
+
+impl From<config::ConfigError> for LoadError {
+    fn from(error: config::ConfigError) -> Self {
+        LoadError::ConfigError(error)
+    }
+}
+
+impl From<rlua::Error> for LoadError {
+    fn from(error: rlua::Error) -> Self {
+        LoadError::LuaError(error)
     }
 }
