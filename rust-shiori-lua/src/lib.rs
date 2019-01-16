@@ -26,17 +26,17 @@ pub struct LuaShiori {
 impl Shiori for LuaShiori {
     type LoadError = LoadError;
     fn load(path: PathBuf) -> Result<Self, LoadError> {
-        fn write_utf16<'a, W: byteorder::WriteBytesExt>(container: &mut W, utf16: impl IntoIterator<Item=impl Borrow<u16>>) {
-            for c in utf16 {
-                container.write_u16::<byteorder::NativeEndian>(*c.borrow()).unwrap();
-            }
-        }
-
         let config = Config::try_load(&path.join("shiori.toml"))?;
         let lua = Lua::new();
         {
             let package: Table = lua.globals().get("package")?;
             let separator = OsString::from(";").encode_wide().collect::<Vec<u16>>();
+            // This encoding stuff probably doesn't work.
+            fn write_utf16<'a, W: byteorder::WriteBytesExt>(container: &mut W, utf16: impl IntoIterator<Item=impl Borrow<u16>>) {
+                for c in utf16 {
+                    container.write_u16::<byteorder::NativeEndian>(*c.borrow()).unwrap();
+                }
+            }
             let path_string = lua.create_string(
                 &config.search_paths.iter()
                     .map(|p| path.join(p))
@@ -93,6 +93,7 @@ impl Shiori for LuaShiori {
 pub enum LoadError {
     ConfigError(config::ConfigError),
     LuaError(rlua::Error),
+    PathEncodingError,
 }
 
 impl From<config::ConfigError> for LoadError {
