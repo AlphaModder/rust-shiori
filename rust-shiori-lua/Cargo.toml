@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 rust-shiori = { path = "../rust-shiori/" }
-rlua = { version ="0.15", default-features = false }
+rlua = { version = "0.15", default-features = false }
 config = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 byteorder = "1.2"

@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 use std::ffi::OsString;
-use std::os::windows::ffi::OsStrExt;
-use std::borrow::Borrow;
+
+#[cfg(windows)]
+use self::os_str::OsStringExt; // Implements `OsString::into_vec` on Windows.
+#[cfg(any(target_os = "redox", unix))]
+use std::os::unix::ffi::OsStringExt;
 
 use rust_shiori::{
     shiori, Shiori,
@@ -11,11 +14,13 @@ use rust_shiori::{
 
 use rlua::{Lua, Table, Function};
 
+mod os_str;
 mod config;
 use self::config::Config;
 
 shiori!(LuaShiori);
 
+#[allow(unused)]
 pub struct LuaShiori {
     path: PathBuf,
     config: config::Config,
@@ -30,29 +35,23 @@ impl Shiori for LuaShiori {
         let lua = Lua::new();
         {
             let package: Table = lua.globals().get("package")?;
-            let separator = OsString::from(";").encode_wide().collect::<Vec<u16>>();
-            // This encoding stuff probably doesn't work.
-            fn write_utf16<'a, W: byteorder::WriteBytesExt>(container: &mut W, utf16: impl IntoIterator<Item=impl Borrow<u16>>) {
-                for c in utf16 {
-                    container.write_u16::<byteorder::NativeEndian>(*c.borrow()).unwrap();
-                }
-            }
+            let separator = OsString::from(";");
             let path_string = lua.create_string(
                 &config.search_paths.iter()
                     .map(|p| path.join(p))
                     .flat_map(|p| vec![p.join("?.lua"), p.join("/?/init.lua")])
                     .enumerate()
-                    .fold(Vec::new(), |mut vec, (index, p)| {
-                        if index != 0 { write_utf16(&mut vec, &separator); }
-                        write_utf16(&mut vec, p.into_os_string().encode_wide());
-                        vec
-                    })
+                    .fold(OsString::new(), |mut os_str, (index, p)| {
+                        if index != 0 { os_str.push(&separator) }
+                        os_str.push(p.into_os_string());
+                        os_str
+                    }).into_vec()
                 )?;
             package.set("path", path_string)?;
-            package.get::<_, Table>("preload")?.set("shiori", lua.exec::<_, Table>(include_str!("lua/shiori.lua"), Some("shiori library"))?)?;
+            package.get::<_, Table>("preload")?.set("shiori", lua.exec::<_, Table>(include_str!("rt/shiori.lua"), Some("shiori library"))?)?;
         }
         
-        let responder = lua.create_registry_value(lua.exec::<_, Function>(include_str!("lua/runtime.lua"), Some("shiori runtime"))?)?;
+        let responder = lua.create_registry_value(lua.exec::<_, Function>(include_str!("rt/runtime.lua"), Some("shiori runtime"))?)?;
 
         Ok(LuaShiori {
             path: path,
@@ -93,7 +92,6 @@ impl Shiori for LuaShiori {
 pub enum LoadError {
     ConfigError(config::ConfigError),
     LuaError(rlua::Error),
-    PathEncodingError,
 }
 
 impl From<config::ConfigError> for LoadError {
