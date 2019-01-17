@@ -10,3 +10,4 @@ winapi = { version = "0.3", features = ["minwindef", "winbase"] }
 regex = "1.0"
 lazy_static = "1.0"
 rust-shiori-macros = { path = "../rust-shiori-macros" }
+shiori_hglobal = "0.3.0" # thanks ekicyou!
