@@ -3,9 +3,10 @@ name = "rust-shiori-lua"
 version = "0.1.0"
 authors = ["AlphaModder"]
 edition = "2018"
+publish = false # for now
 
 [dependencies]
-rust-shiori = { path = "../rust-shiori/" }
+rust-shiori = { path = "../rust-shiori/", default-features = false }
 rlua = { version = "0.15", default-features = false }
 config = "0.9"
 serde = { version = "1.0", features = ["derive"] }

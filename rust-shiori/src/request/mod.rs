@@ -4,6 +4,7 @@ use std::str::FromStr;
 use lazy_static::lazy_static;
 use regex::Regex;
 
+#[cfg(feature = "typed_request")]
 pub mod typed;
 
 lazy_static! {

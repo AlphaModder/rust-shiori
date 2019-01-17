@@ -23,6 +23,14 @@ impl<'a> TypedRequest<'a> {
             kind: RequestKind::from_untyped(untyped),
         }
     }
+
+    pub fn method(&self) -> Method { self.method }
+    pub fn version(&self) -> &str { self.version }
+    pub fn sender(&self) -> Option<&str> { self.sender }
+    pub fn charset(&self) -> Option<&str> { self.charset }
+    pub fn security_level(&self) -> Option<&str> { self.security_level }
+    pub fn id(&self) -> Option<&str> { self.id }
+    pub fn kind(&self) -> &RequestKind { &self.kind }
 }
 
 pub enum RequestKind<'u> {

@@ -9,5 +9,9 @@ publish = false # for now
 winapi = { version = "0.3", features = ["minwindef", "winbase"] }
 regex = "1.0"
 lazy_static = "1.0"
-rust-shiori-macros = { path = "../rust-shiori-macros" }
+rust-shiori-macros = { path = "../rust-shiori-macros", optional = true }
 shiori_hglobal = "0.3.0" # thanks ekicyou!
+
+[features]
+default = ["typed_request"]
+typed_request = ["rust-shiori-macros"]
