@@ -1,5 +1,5 @@
 use crate::request::{Method, Request as UntypedReq, FromRequestField};
-use rust_shiori_macros::*;
+pub use rust_shiori_macros::*;
 
 pub struct TypedRequest<'a> {
     method: Method,
