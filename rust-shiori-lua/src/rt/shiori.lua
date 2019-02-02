@@ -26,6 +26,7 @@ function shiori:resume_on_event(event, routine, filter)
             return nil, false
         end
     )
+    coroutine.yield()
 end
 
 function shiori:set_event_preprocessor(event, preprocessor)

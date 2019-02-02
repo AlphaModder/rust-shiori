@@ -1,6 +1,6 @@
-shiori = require("shiori")
+local shiori = require("shiori")
 
-ok_codes = { GET = 300, NOTIFY = 204 }
+local ok_codes = { GET = 300, NOTIFY = 204 }
 
 function tostring_or_nil(x) 
     if x ~= nil then return tostring(x) end
@@ -8,7 +8,7 @@ function tostring_or_nil(x)
 end
 
 function remove_nils(array)
-    new = {}
+    local new = {}
     for _, item in ipairs(array) do
         if item ~= nil then new[#new + 1] = item end
     end
@@ -18,11 +18,12 @@ end
 function respond(event, method)
     if event and event["ID"] then
         local preprocessor = shiori.event_preprocessors[event["ID"]]
-        if preprocessor then event = preprocessor(event) end
+        local procevent = {event}
+        if preprocessor then procevent = {preprocessor(event)} end
         local handlers = shiori.event_handlers[event["ID"]]
         local routine = nil
         for i, handler in ipairs(handlers) do
-            local co, remove = handler(event)
+            local co, remove = handler(unpack(packevent))
             if remove then handlers[i] = nil end
             if co then
                 routine = co

@@ -1,4 +1,4 @@
-sakura = {}
+local sakura = {}
 
 local function contains(array, val)
     for _, value in ipairs(array) do
@@ -17,7 +17,7 @@ local function copystrs(array)
     return new
 end
 
-sakura.COMMAND_PATTERNS = {"(\\(\\))"} -- this one has to come first
+sakura.COMMAND_PATTERNS = {"(\\(\\))", "(\\(%d))"} -- special cases have to come first
 for _, e in ipairs({"%[([^%[%]]+)%]", "(%d)", "[^%[%d]", "$"}) do
     sakura.COMMAND_PATTERNS[#sakura.COMMAND_PATTERNS+1] = string.format("(\\(_?_?[a-zA-Z&!%%*%%-%%?%%+])%s)", e)
 end
@@ -41,7 +41,7 @@ function sakura.parse(script)
                 segments[#segments+1] = { type="text", text=script:sub(pos, s-1)}
                 text, name, argstr = script:match(pattern, pos)
                 args = {}
-                for arg in argstr:gmatch("([^,]+),?") do args[#args+1] = arg end
+                if argstr ~= nil then for arg in argstr:gmatch("([^,]+),?") do args[#args+1] = arg end end
                 segments[#segments+1] = { type="command", text=text, name=name, args=args }
                 done = false
                 pos = e+1
@@ -53,7 +53,7 @@ function sakura.parse(script)
     return segments
 end
 
--- { "![update", "6", "7", "![execute", "![biff]", }
+-- check these: "![update,", "6", "7", "![execute", "![biff]", }
 sakura.BRANCH_COMMANDS = {"q", "__q", "_a", "e", "-", "![raise", "![embed", }
 
 function sakura.clean(segments)

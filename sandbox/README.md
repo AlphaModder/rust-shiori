@@ -1,0 +1,1 @@
+The 'sandbox' folder is just for me to prototype random bits of the project. Probably best to ignore it.
