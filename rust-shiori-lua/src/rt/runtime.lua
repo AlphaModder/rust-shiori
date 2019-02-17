@@ -1,19 +1,10 @@
 local shiori = require("shiori")
+local utils = require("utils")
+local lang = require("lang")
+
+lang.install_searcher()
 
 local ok_codes = { GET = 300, NOTIFY = 204 }
-
-function tostring_or_nil(x) 
-    if x ~= nil then return tostring(x) end
-    return nil
-end
-
-function remove_nils(array)
-    local new = {}
-    for _, item in ipairs(array) do
-        if item ~= nil then new[#new + 1] = item end
-    end
-    return new
-end
 
 function respond(event, method)
     if event and event["ID"] then
@@ -30,7 +21,7 @@ function respond(event, method)
                 break
             end
         end
-        shiori.event_handlers[event["ID"]] = remove_nils(handlers)
+        shiori.event_handlers[event["ID"]] = utils.remove_nils(handlers)
         if routine then 
             return xpcall(resume_script, resume_error_handler, routine, event, method)
         end
@@ -47,7 +38,7 @@ end
 
 function resume_error_handler(e)
     if not istable(e) then e = { response = e } end
-    return { response = tostring_or_nil(e.response), code = e.code or 500}
+    return { response = utils.tostring_or_nil(e.response), code = e.code or 500}
 end
 
 return respond

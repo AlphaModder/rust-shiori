@@ -1,21 +1,6 @@
+local utils = require("utils")
+
 local sakura = {}
-
-local function contains(array, val)
-    for _, value in ipairs(array) do
-        if value == val then
-            return true
-        end
-    end
-    return false
-end
-
-local function copystrs(array)
-    new = {}
-    for _, str in ipairs(array) do
-        new[#new + 1] = str
-    end
-    return new
-end
 
 sakura.COMMAND_PATTERNS = {"(\\(\\))", "(\\(%d))"} -- special cases have to come first
 for _, e in ipairs({"%[([^%[%]]+)%]", "(%d)", "[^%[%d]", "$"}) do
@@ -65,7 +50,7 @@ function sakura.clean(segments)
                     cleaned[#cleaned + 1] = { type="command" text="\\\\", name="\\", args={}}
                     cleaned[#cleaned + 1] = { type="text", text=seg.text:sub(2)}
                 else
-                    cleaned[#cleaned + 1] = { type="command", text=seg.text, name=seg.name, args=copystrs(seg.args) }
+                    cleaned[#cleaned + 1] = { type="command", text=seg.text, name=seg.name, args=utils.copystrs(seg.args) }
                 end
             end
         else
