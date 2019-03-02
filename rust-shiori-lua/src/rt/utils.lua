@@ -21,15 +21,14 @@ end
 function utils.StringBuilder()
     local strings = {}
     return {
-        write = function(s, ...) strings[#strings + 1] = string.format(s or "", ...) end
-        writeline = function(s, ...) strings[#strings + 1] = (string.format(s or "", ...) .. "\n") end
+        write = function(s, ...) strings[#strings + 1] = string.format(s or "", ...) end,
+        writeline = function(s, ...) strings[#strings + 1] = (string.format(s or "", ...) .. "\n") end,
         build = function() return table.concat(strings) end
     }
 end
 
 function utils.tostring_or_nil(val) 
-    if val ~= nil then return tostring(val) end
-    return nil
+    if val ~= nil then return tostring(val) else return nil end
 end
 
 function utils.remove_nils(array)
@@ -42,25 +41,19 @@ end
 
 function utils.contains(array, val)
     for _, value in ipairs(array) do
-        if value == val then
-            return true
-        end
+        if value == val then return true end
     end
     return false
 end
 
-function utils.copystrs(array)
+function utils.dup(array)
     new = {}
-    for _, str in ipairs(array) do
-        new[#new + 1] = str
-    end
+    for _, item in ipairs(array) do new[#new + 1] = item end
     return new
 end
 
 function utils.extend(a1, a2)
-    for _, item in ipairs(a2) do
-        a1[#a1 + 1] = item
-    end
+    for _, item in ipairs(a2) do a1[#a1 + 1] = item end
 end
 
 return utils

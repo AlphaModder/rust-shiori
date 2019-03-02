@@ -47,10 +47,10 @@ function sakura.clean(segments)
         if seg.type == "command" then
             for _, cmd in ipairs(sakura.BRANCH_COMMANDS) do
                 if seg.text:match("^" .. cmd) ~= nil then
-                    cleaned[#cleaned + 1] = { type="command" text="\\\\", name="\\", args={}}
+                    cleaned[#cleaned + 1] = { type="command", text="\\\\", name="\\", args={}}
                     cleaned[#cleaned + 1] = { type="text", text=seg.text:sub(2)}
                 else
-                    cleaned[#cleaned + 1] = { type="command", text=seg.text, name=seg.name, args=utils.copystrs(seg.args) }
+                    cleaned[#cleaned + 1] = { type="command", text=seg.text, name=seg.name, args=utils.dup(seg.args) }
                 end
             end
         else

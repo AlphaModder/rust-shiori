@@ -1,12 +1,13 @@
 local sakura = require("sakura")
 local shiori = require("shiori")
 local utils = require("utils")
+local math = require("math")
 
 local langlib = {}
 
-local function langlib.Script()
-    segments = {}
-    active_chars = {}
+function langlib.Script()
+    local segments = {}
+    local active_chars = {}
 
     local function write_command(name, ...)
         local args = {...}
@@ -56,5 +57,7 @@ local function langlib.Script()
         to_sakura = to_sakura,
     }
 end
+
+function langlib.choose(choices) return choices[math.rand(1, #choices)] end
 
 return langlib

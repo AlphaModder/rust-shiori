@@ -2,8 +2,6 @@ local shiori = require("shiori")
 local utils = require("utils")
 local lang = require("lang")
 
-lang.install_searcher()
-
 local ok_codes = { GET = 300, NOTIFY = 204 }
 
 function respond(event, method)
@@ -33,7 +31,7 @@ function resume_script(routine, event, method)
     local s, r = coroutine.resume(routine, event)
     if not s then shiori.error_generic("attempt to resume dead coroutine") end
     local code = ok_codes[method] or shiori.error_bad_request("invalid request method")
-    return { response = tostring(r), code = code )}
+    return { response = tostring(r), code = code }
 end
 
 function resume_error_handler(e)

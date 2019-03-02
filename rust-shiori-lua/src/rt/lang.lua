@@ -2,42 +2,6 @@ local lpeg = require("lpeg")
 local re = require("re")
 local utils = require("utils")
 
-local GRAMMAR = re.compile([[
-    s <- %s+
-    lexpr <-
-    lstmt <-
-    lkeyword <- 'and' / 'break' / 'do' / 'else' / 'elseif' / 'end' / 'false' / 'for' / 'function' / 'if' /
-        'in' / 'local' / 'nil' / 'not' / 'or' / 'repeat' / 'return' / 'then' / 'true' / 'until' / 'while'
-    
-    keyword <- lkeyword / 'event' / 'script' / 'choose' / 'raise' / '__LANGLIB' / '__SHIORI_EVENTS'
-    ident <- ([_%a][_%w]*) - keyword
-    arglist <- '(' s? (ident s? ',' s?)* ident? s? ')'
-
-    number <- '-'? (%d*\.)? %d+
-    say <- ident s anyexpr
-    simplestr <- ('"' .* '"') / ("'" [^\]* "'")
-    longstr <- 
-
-    string <- simplestr / longstr
-
-    expr <- number / string / say
-    anyexpr <- expr / ('$(' lexpr ')')
-
-    local <- 'local' s ident s? = s? anyexpr
-    assign <- ident s? '=' s? anyexpr
-    if <- 'if' s anyexpr s 'then' s
-    elseif <- 'elseif' s anyexpr s 'then' s stmt*
-    else <- 'else' s stat*
-    ifstat <- if elseif* else? 'end'
-    while <- ('while' / 'until') s anyexpr s 'do' s stmt* 'end'
-    for <- 'for' s lexpr s 'in' s lexpr s 'do' s stmt* 'end'
-    return <- 'return' s anyexpr
-    stmt <- (say / local / assign / ifstat / while / for / 'continue' / 'break' / return / ('$' lstmt)) s
-
-    func <- ('event' / 'script' / 'function') s ident ((s? arglist? s?) / s) stmt* 'end
-    file <- func / ('$' lstat) 
-]])
-
 local FILE_TEMPLATE = [[
     local __LANGLIB = require("langlib")
     local __SHIORI_EVENTS = { }
@@ -47,7 +11,100 @@ local FILE_TEMPLATE = [[
     return __SHIORI_EVENTS
 ]]
 
+local GRAMMAR = re.compile([[
+    s <- %s+
+    lexpr <- {| {:tag: '' -> 'lexpr' } 'LUAEXPRESSION' |}
+    lstmt <- {| {:tag: '' -> 'lstmt' } 'LUASTATEMENT' |}
+    lkeyword <- 'and' / 'break' / 'do' / 'else' / 'elseif' / 'end' / 'false' / 'for' / 'function' / 'if' /
+        'in' / 'local' / 'nil' / 'not' / 'or' / 'repeat' / 'return' / 'then' / 'true' / 'until' / 'while'
+    
+    keyword <- lkeyword / 'event' / 'script' / 'choose' / 'raise' / '__LANGLIB' / '__SHIORI_EVENTS'
+    ident <- ([_%a][_%w]*) - keyword
+
+    ilist <- s? (ident s? ',' s?)* ident? s?
+    elist <- {| s? (anyexpr s? ',' s?)* anyexpr? s? |}
+
+    slit <- {| {:text: [^\$%'] / (\[\']) :} |}
+    dlit <- {| {:text: [^\$%"] / (\[\"]) :} |}
+    interp <- {| {:text: '' -> '%s' :} ('%(' s? {:interp: anyexpr :} s? ')') / ('$(' s? {:interp: lexpr :} s? ')') |}
+    interpesc <- {| '\'? {:text: [$%] :} |}
+    sstr <- {| {:tag: '' -> 'string' :} {:quote: "'" :} {:segments: {| (slit / interp / interpesc)* |} :} "'" |}
+    dstr <- {| {:tag: '' -> 'string' :} {:quote: '"' :} {:segments: {| (dlit / interp / interpesc)* |} :} '"' |}
+    string <- sstr / dstr
+
+    number <- {| {:tag: '' -> 'number' :} {:text: '-'? (%d*\.)? %d+ :} |}
+    say <- {| {:tag: '' -> 'say' :} {:char: ident } s {:expr: anyexpr } |}
+    choose <- {| {:tag: '' -> 'choose' :} 'choose' s {:choices: elist :} 'end' |}
+
+    expr <- string / number / say / choose
+    anyexpr <- expr / ('$(' s? lexpr s? ')')
+
+    local <- {| {:tag: '' -> 'local' :} 'local' s {:name: ident :} s? (= s? {:expr: anyexpr :})? |}
+    assign <- {| {:tag: '' -> 'assign' :} {:name: ident :} s? '=' s? {:expr: anyexpr :} |}
+    if <- {| {:type: '' -> 'if' :} 'if' s {:cond: anyexpr :} s 'then' s {:body: {| stmt* |} :} |}
+    elseif <- {| {:type: '' -> 'elseif' :} 'elseif' s {:cond: anyexpr :} s 'then' s {:body: {| stmt* |} :} |}
+    else <- {| {:type: '' -> 'else' :} 'else' s {:body: {| stmt* |} :} |}
+    ifstat <- {| {:tag: '' -> 'ifstmt' :} {:cases: {| if elseif* else? |} :} 'end' |}
+    while <- {| {:tag: ('while' / 'until') :} s {:cond: anyexpr :} s 'do' s {:body: {| stmt* |} :} 'end'
+    for <- {| {:tag: '' -> 'for' :} 'for' s {:var: ident s? (',' ilist)? :} s 'in' s {:iter: lexpr :} s 'do' s {:body: {| stmt* |} :} 'end' |}
+    return <- {| {:tag: '' -> 'return' :} 'return' s {:val: anyexpr :} |}
+    stmt <- (say / local / assign / ifstat / while / for / 'continue' / 'break' / return / ('$' s? lstmt)) s
+
+    func <- {| {:type: ('event' / 'script' / 'function') } s {:name: ident :} ((s? '(' {:arglist: ilist :} ')' s?) / s) stmt* 'end' |}
+    file <- func / ('$' s? lstat) 
+]])
+
 local compiler = {}
+
+function compiler.compile_expr(expr, builder)
+    if expr.tag == "string" then
+        compiler.compile_string(expr, builder)
+    elseif expr.tag == "number" then
+        builder.write(expr.text)
+    elseif expr.tag == "say" then
+        builder.write("script.say(")
+        compiler.compile_expr(stmt.expr, builder)
+        builder.write(")")
+    elseif expr.tag == "choose" then 
+        builder.write("__LANGLIB.choose{")
+        for i, choice in ipairs(expr.choices) do 
+            if i > 0 then builder.write(", ") end
+            builder.write("function() ")
+            compiler.compile_expr(choice)
+            builder.write("end")
+        end
+        builder.write("}()")
+    end
+end
+
+function compiler.compile_string(str, builder)
+    local interps = nil
+    for seg in str.segments do 
+        if seg.interp ~= nil then 
+            if interps == nil then interps = {} end
+            interps[#interps + 1] = seg.interp
+        end 
+    end
+    
+    if interps ~= nil then
+        for seg in str.segments do
+            if seg.interp == nil then seg.text = seg.text:gsub("%", "%%") end
+        end
+        builder.write("string.format(")
+    end
+
+    builder.write(str.quote)
+    for seg in str.segments do builder.write(seg.text) end
+    builder.write(str.quote)
+
+    if interps ~= nil then
+        for expr in interps do
+            builder.write(", ")
+            compiler.compile_expr(expr, builder)
+        end
+        builder.write(")")
+    end
+end
 
 function compiler.compile_file(file)
     builder = utils.StringBuilder()
@@ -77,10 +134,15 @@ end
 function compiler.compile_stmt(stmt, builder)
     local stmt = stmt[1]
     if stmt.tag == "say" then
-        builder.writeline("script.say(%s)", stmt.text)
+        builder.write("script.say(%s, ", stmt.char)
+        compiler.compile_expr(stmt.expr)
+        builder.writeline(")")
     elseif stmt.tag == "local" then 
-        builder.write("local %s = ", stmt.name)
-        compiler.compile_expr(stmt.expr, builder)
+        builder.write("local %s", stmt.name)
+        if stmt.expr ~= nil then
+            builder.write(" = ")
+            compiler.compile_expr(stmt.expr, builder)
+        end
         builder.writeline()
     elseif stmt.tag == "assign" then
         builder.write("%s = ", stmt.name)
@@ -101,7 +163,9 @@ function compiler.compile_stmt(stmt, builder)
         builder.compile_stmts(stmt.body)
         builder.writeline("end")
     elseif stmt.tag == "for" then
-        builder.writeline("for %s in %s do", stmt.var, stmt.iter)
+        builder.write("for %s in ", stmt.var)
+        builder.compile_expr(stmt.iter)
+        builder.writeline(" do")
         builder.compile_stmts(stmt.body)
         builder.writeline("end")
     elseif stmt.tag == "continue" or stmt.tag == "break" then
@@ -117,7 +181,8 @@ function compiler.compile_stmt(stmt, builder)
     end
 end
 
-local lang = {}
+
+local lang = { path = "" }
 
 function lang.compile(str)
     local ast = GRAMMAR:match(str)
@@ -133,6 +198,17 @@ function lang.load_file(path)
     local content = file:read("*all")
     file:close()
     return lang.load_str(content)
+end
+
+package.loaders[#package.loaders + 1] = function(module)
+    local file, err = package.searchpath(lang.path)
+    if file == nil then 
+        return err 
+    else
+        return function()
+            return lang.load_file(file)
+        end
+    end
 end
 
 return lang
