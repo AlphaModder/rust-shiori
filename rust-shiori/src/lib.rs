@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 pub mod request;
 pub mod response;
-pub mod sakura;
 
 #[doc(hidden)]
 pub mod internals;

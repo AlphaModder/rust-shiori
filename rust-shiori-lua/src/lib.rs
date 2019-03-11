@@ -12,7 +12,7 @@ use rust_shiori::{
     response::{Response, ResponseStatus, ResponseBuilder}
 };
 
-use rlua::{Lua, Table, Function};
+use rlua::{Lua, Table, Function, Context};
 
 mod os_str;
 mod config;
@@ -28,25 +28,34 @@ pub struct LuaShiori {
     lua: Lua,
 }
 
+
 impl Shiori for LuaShiori {
     type LoadError = LoadError;
     fn load(path: PathBuf) -> Result<Self, LoadError> {
         let config = Config::try_load(&path.join("shiori.toml"))?;
         let lua = Lua::new();
-        {
-            let preload = lua.globals().get::<_, Table>("package")?.get::<_, Table>("preload")?;
-            preload.set("fstring", lua.exec::<_, Table>(include_str!("rt/fstring.lua"), Some("format strings"))?)?;
-            preload.set("utils", lua.exec::<_, Table>(include_str!("rt/utils.lua"), Some("shiori utils"))?)?;
-            preload.set("sakura", lua.exec::<_, Table>(include_str!("rt/sakura.lua"), Some("sakura library"))?)?;
-            preload.set("shiori", lua.exec::<_, Table>(include_str!("rt/shiori.lua"), Some("shiori library"))?)?;
-        }
 
-        let responder = {
-            let runtime = lua.exec::<_, Table>(include_str!("rt/runtime.lua"), Some("shiori runtime"))?;
-            let responder = lua.create_registry_value(runtime.get::<_, Function>("respond")?)?;
+        let preload_modules = [
+            ("fstring", include_str!("rt/fstring.lua"), "format strings"),
+            ("utils", include_str!("rt/utils.lua"), "shiori utils"),
+            ("sakura", include_str!("rt/sakura.lua"), "sakura library"),
+            ("shiori", include_str!("rt/shiori.lua"), "shiori ibrary"),
+        ];
+
+        lua.context(|ctx| -> rlua::Result<_> {
+            let preload = ctx.globals().get::<_, Table>("package")?.get::<_, Table>("preload")?;
+            for module in &preload_modules {
+                preload.set::<_, Table>(module.0, ctx.load(module.1).set_name(module.2)?.call(())?)?;
+            }
+            Ok(())
+        })?;
+
+        let responder = lua.context(|ctx| -> rlua::Result<_> {
+            let runtime: Table = ctx.load(include_str!("rt/utils.lua")).set_name("shiori utils")?.call(())?;
+            let responder = ctx.create_registry_value(runtime.get::<_, Function>("respond")?)?;
             
             let separator = OsString::from(";");
-            let path_string = lua.create_string(
+            let path_string = ctx.create_string(
                 &config.search_paths.iter()
                     .map(|p| path.join(p))
                     .flat_map(|p| vec![p.join("?.lua"), p.join("/?/init.lua")])
@@ -59,8 +68,8 @@ impl Shiori for LuaShiori {
             )?;
 
             runtime.get::<_, Function>("init")?.call::<_, ()>(path_string)?;
-            responder
-        };
+            Ok(responder)
+        })?;
 
         Ok(LuaShiori {
             path: path,
@@ -73,13 +82,13 @@ impl Shiori for LuaShiori {
     fn respond(&mut self, request: Request) -> Response {
         let mut response = ResponseBuilder::new().with_field("Charset", "UTF-8");
 
-        let respond_raw = || -> Result<(Option<String>, u32), rlua::Error> {
-            let field_table = self.lua.create_table_from(request.fields().into_iter().map(|(k, v)| (k.as_str(), v.as_str())));
-            let response = self.lua.registry_value::<Function>(&self.responder)?.call::<_, Table>(field_table)?;
+        let respond_raw = |ctx: Context| -> rlua::Result<(Option<String>, u32)> {
+            let field_table = ctx.create_table_from(request.fields().into_iter().map(|(k, v)| (k.as_str(), v.as_str())));
+            let response = ctx.registry_value::<Function>(&self.responder)?.call::<_, Table>(field_table)?;
             Ok((response.get("response")?, response.get("code")?))
         };
 
-        match respond_raw() {
+        match self.lua.context(respond_raw) {
             Ok((r, c)) => {
                 let status = ResponseStatus::from_code(c).unwrap_or(ResponseStatus::InternalServerError);
                 response = response.with_status(status);
