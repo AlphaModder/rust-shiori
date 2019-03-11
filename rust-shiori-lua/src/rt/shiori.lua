@@ -1,6 +1,7 @@
 local math = require("math")
 local utils = require("utils")
 local sakura = require("sakura")
+local fstring = require("fstring")
 
 local shiori = {
     event_handlers = {},
@@ -58,7 +59,7 @@ end
 
 local function _CharacterSet(chars)
     local meta = {
-        __call = function(text) shiori.script.say(characters, text) end,
+        __call = function(text) shiori.script.say(characters, text, 3) end,
         __add = function(rhs, lhs) return _CharacterSet(rhs.chars + lhs.chars) end
     }
     return setmetatable({chars=chars}, meta)
@@ -103,8 +104,10 @@ function shiori.Script()
         end
     end
 
-    local function say(characters, text)
+    local function say(characters, text, n)
+        n = n or 2
         update_chars(characters)
+        text = fstring.f(text, n)
         for _, segment in ipairs(sakura.clean(sakura.parse(text))) do segments[#segments + 1] = segment end
     end
 

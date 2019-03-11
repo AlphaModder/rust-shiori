@@ -28,7 +28,6 @@ pub struct LuaShiori {
     lua: Lua,
 }
 
-
 impl Shiori for LuaShiori {
     type LoadError = LoadError;
     fn load(path: PathBuf) -> Result<Self, LoadError> {
@@ -103,6 +102,7 @@ impl Shiori for LuaShiori {
                 response = response.with_status(ResponseStatus::InternalServerError);
             }
         }
+        
         response.build().unwrap()
     }
 }

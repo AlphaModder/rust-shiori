@@ -42,16 +42,17 @@ end
 
 local function snd(_, b) return b end
 
-local function format(_, str)
-   local outer_env = _ENV and (snd(scan_using(debug.getlocal, 3, "_ENV")) or snd(scan_using(debug.getupvalue, debug.getinfo(2, "f").func, "_ENV")) or _ENV)
+local function format(str, n)
+   n = n or 1
+   local outer_env = _ENV and (snd(scan_using(debug.getlocal, 2 + n, "_ENV")) or snd(scan_using(debug.getupvalue, debug.getinfo(1 + n, "f").func, "_ENV")) or _ENV)
    return (str:gsub("%b{}", function(block)
       local code, fmt = block:match("{(.*):(%%.*)}")
       code = code or block:match("{(.*)}")
       local exp_env = {}
       setmetatable(exp_env, { __index = function(_, k)
-         local ok, value = scan_using(debug.getupvalue, debug.getinfo(6, "f").func, k)
+         local ok, value = scan_using(debug.getupvalue, debug.getinfo(5 + n, "f").func, k)
          if ok then return value end
-         ok, value = scan_using(debug.getlocal, 7, k)
+         ok, value = scan_using(debug.getlocal, 6 + n, k)
          if ok then return value end
          return rawget(outer_env, k)
       end })
@@ -64,8 +65,6 @@ local function format(_, str)
    end))
 end
 
-setmetatable(f, {
-   __call = format
-})
-
-return f
+return {
+   f = format,
+}

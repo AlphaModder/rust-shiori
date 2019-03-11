@@ -14,7 +14,7 @@ local function init(script_path)
     local SCRIPT_ENV = {
         shiori = shiori,
         sakura = require("sakura"),
-        f = require("fstring"),
+        f = require("fstring").f,
         choose = utils.choose,
         bad_request = shiori.error_bad_request,
         shiori_error = shiori.error_generic,
