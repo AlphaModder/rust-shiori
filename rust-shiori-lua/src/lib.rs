@@ -35,6 +35,7 @@ impl Shiori for LuaShiori {
         let lua = Lua::new();
         {
             let preload = lua.globals().get::<_, Table>("package")?.get::<_, Table>("preload")?;
+            preload.set("fstring", lua.exec::<_, Table>(include_str!("rt/fstring.lua"), Some("format strings"))?)?;
             preload.set("utils", lua.exec::<_, Table>(include_str!("rt/utils.lua"), Some("shiori utils"))?)?;
             preload.set("sakura", lua.exec::<_, Table>(include_str!("rt/sakura.lua"), Some("sakura library"))?)?;
             preload.set("shiori", lua.exec::<_, Table>(include_str!("rt/shiori.lua"), Some("shiori library"))?)?;
