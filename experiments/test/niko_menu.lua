@@ -1,7 +1,15 @@
-shiori = require('shiori')
+local shiori = require('shiori')
+local F = require('F')
 
 function display_menu(script)
-    script.say(0, "")
+    n = script.chars[0]
+    local start = choose { "Yeah?", F"What, {username}?", "Mm?" }
+    n "{start}\n\n* (You ask Niko...)\n\n"
+    local choice = n [[
+        
+    ]]
+    
+    
 end
 
 MENU_SCRIPT = [[
