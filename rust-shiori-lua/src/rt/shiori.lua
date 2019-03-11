@@ -5,6 +5,7 @@ local sakura = require("sakura")
 local shiori = {
     event_handlers = {},
     event_preprocessors = {},
+    script = nil,
 }
 
 function shiori.error_bad_request(message, level)
@@ -18,7 +19,6 @@ function shiori.error_generic(message, level)
 end
 
 function shiori.push_notify_handler(event, handler)
-    handler = function(_, ...) return handler(...) end
     table.insert(shiori.event_handlers, 1, 
         function(method, event)
             if method == "NOTIFY" then return coroutine.create(handler), false end
@@ -54,6 +54,18 @@ end
 
 function shiori.set_event_preprocessor(event, preprocessor)
     shiori.event_preprocessors[event] = preprocessor
+end
+
+local function _CharacterSet(chars)
+    local meta = {
+        __call = function(text) shiori.script.say(characters, text) end,
+        __add = function(rhs, lhs) return _CharacterSet(rhs.chars + lhs.chars) end
+    }
+    return setmetatable({chars=chars}, meta)
+end
+
+function shiori.CharacterSet(...)
+    return _CharacterSet(utils.Set{...})
 end
 
 function shiori.Script()
@@ -92,7 +104,7 @@ function shiori.Script()
     end
 
     local function say(characters, text)
-        update_chars(utils.Set(characters))
+        update_chars(characters)
         for _, segment in ipairs(sakura.clean(sakura.parse(text))) do segments[#segments + 1] = segment end
     end
 
@@ -102,11 +114,14 @@ function shiori.Script()
 
     local function to_sakura() return sakura.write(segments) end
 
-    return {
+    local script = {
         say = say,
         raise = raise,
         to_sakura = to_sakura,
     }
+    -- TODO: Don't hardcode this.
+    script.chars = {shiori.CharacterSet(0), shiori.CharacterSet(1)}
+    return script
 end
 
 return shiori

@@ -4,6 +4,13 @@ local utils = require("utils")
 local ok_codes = { GET = 300, NOTIFY = 204 }
 
 local function init(script_path)
+    local SCRIPT_ENV_META = {
+        __index = function(table, key) 
+            if key == "script" then return shiori.script end
+            return _G[key]
+        end
+    }
+
     local SCRIPT_ENV = {
         shiori = shiori,
         sakura = require("sakura"),
@@ -12,7 +19,7 @@ local function init(script_path)
         shiori_error = shiori.error_generic,
     }
 
-    setmetatable(SCRIPT_ENV, {__index=_G})
+    setmetatable(SCRIPT_ENV, SCRIPT_ENV_META)
     package.loaders[#package.loaders + 1] = function(module)
         local file, err = package.searchpath(script_path)
         if file == nil then 
@@ -51,10 +58,11 @@ end
 local function resume_script(routine, event, method)
     local script = nil
     if method == "GET" then script = shiori.Script() end
-    local s, r = coroutine.resume(routine, script, table.unpack(procevent))
+    shiori.script = script
+    local s, _ = coroutine.resume(routine, table.unpack(procevent))
     if not s then shiori.error_generic("attempt to resume dead coroutine") end
     local code = ok_codes[method] or shiori.error_bad_request("invalid request method")
-    return { response = tostring(r), code = code }
+    return { response = script.to_sakura(), code = code }
 end
 
 local function resume_error_handler(e)
