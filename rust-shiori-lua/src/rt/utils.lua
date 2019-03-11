@@ -56,4 +56,6 @@ function utils.extend(a1, a2)
     for _, item in ipairs(a2) do a1[#a1 + 1] = item end
 end
 
+function utils.choose(choices) return choices[math.rand(1, #choices)] end
+
 return utils

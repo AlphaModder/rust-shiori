@@ -34,7 +34,16 @@ impl Shiori for LuaShiori {
         let config = Config::try_load(&path.join("shiori.toml"))?;
         let lua = Lua::new();
         {
-            let package: Table = lua.globals().get("package")?;
+            let preload = lua.globals().get::<_, Table>("package")?.get::<_, Table>("preload")?;
+            preload.set("utils", lua.exec::<_, Table>(include_str!("rt/utils.lua"), Some("shiori utils"))?)?;
+            preload.set("sakura", lua.exec::<_, Table>(include_str!("rt/sakura.lua"), Some("sakura library"))?)?;
+            preload.set("shiori", lua.exec::<_, Table>(include_str!("rt/shiori.lua"), Some("shiori library"))?)?;
+        }
+
+        let responder = {
+            let runtime = lua.exec::<_, Table>(include_str!("rt/runtime.lua"), Some("shiori runtime"))?;
+            let responder = lua.create_registry_value(runtime.get::<_, Function>("respond")?)?;
+            
             let separator = OsString::from(";");
             let path_string = lua.create_string(
                 &config.search_paths.iter()
@@ -46,12 +55,11 @@ impl Shiori for LuaShiori {
                         os_str.push(p.into_os_string());
                         os_str
                     }).into_vec()
-                )?;
-            package.set("path", path_string)?;
-            package.get::<_, Table>("preload")?.set("shiori", lua.exec::<_, Table>(include_str!("rt/shiori.lua"), Some("shiori library"))?)?;
-        }
-        
-        let responder = lua.create_registry_value(lua.exec::<_, Function>(include_str!("rt/runtime.lua"), Some("shiori runtime"))?)?;
+            )?;
+
+            runtime.get::<_, Function>("init")?.call::<_, ()>(path_string)?;
+            responder
+        };
 
         Ok(LuaShiori {
             path: path,
