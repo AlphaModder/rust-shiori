@@ -81,6 +81,7 @@ impl Request {
         self.fields.get(field).map(|s| s.as_str())
     }
 
+    #[cfg(feature = "typed_request")]
     pub fn as_typed(&self) -> typed::TypedRequest {
         typed::TypedRequest::from_untyped(self)
     }

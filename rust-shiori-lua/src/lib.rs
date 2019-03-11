@@ -1,10 +1,13 @@
 use std::path::PathBuf;
 use std::ffi::OsString;
+use std::fs::File;
 
 #[cfg(windows)]
 use self::os_str::OsStringExt; // Implements `OsString::into_vec` on Windows.
 #[cfg(any(target_os = "redox", unix))]
 use std::os::unix::ffi::OsStringExt;
+
+use log::{info, debug, error};
 
 use rust_shiori::{
     shiori, Shiori,
@@ -13,6 +16,8 @@ use rust_shiori::{
 };
 
 use rlua::{Lua, Table, Function, Context};
+
+use simplelog::{WriteLogger, LevelFilter, Config as LogConfig};
 
 mod os_str;
 mod config;
@@ -28,10 +33,14 @@ pub struct LuaShiori {
     lua: Lua,
 }
 
-impl Shiori for LuaShiori {
-    type LoadError = LoadError;
+impl LuaShiori {
     fn load(path: PathBuf) -> Result<Self, LoadError> {
+        let log_file = File::create(&path.join("rust-shiori-lua.log"))?;
+        WriteLogger::init(LevelFilter::Debug, LogConfig::default(), log_file)?;
+        debug!("Logging successfully initialized.");
+
         let config = Config::try_load(&path.join("shiori.toml"))?;
+
         let lua = Lua::new();
 
         let preload_modules = [
@@ -42,22 +51,26 @@ impl Shiori for LuaShiori {
         ];
 
         lua.context(|ctx| -> rlua::Result<_> {
-            let preload = ctx.globals().get::<_, Table>("package")?.get::<_, Table>("preload")?;
+            let loaded = ctx.globals().get::<_, Table>("package")?.get::<_, Table>("loaded")?;
             for module in &preload_modules {
-                preload.set::<_, Table>(module.0, ctx.load(module.1).set_name(module.2)?.call(())?)?;
+                loaded.set::<_, Table>(module.0, ctx.load(module.1).set_name(module.2)?.call(())?)?;
             }
             Ok(())
         })?;
+        debug!("Lua libraries loaded.");
 
         let responder = lua.context(|ctx| -> rlua::Result<_> {
-            let runtime: Table = ctx.load(include_str!("rt/utils.lua")).set_name("shiori utils")?.call(())?;
+            let runtime: Table = ctx.load(include_str!("rt/runtime.lua")).set_name("shiori runtime")?.call(())?;
+            debug!("Lua runtime loaded.");
+
             let responder = ctx.create_registry_value(runtime.get::<_, Function>("respond")?)?;
+            debug!("Responder function created.");
             
             let separator = OsString::from(";");
             let path_string = ctx.create_string(
-                &config.search_paths.iter()
+                &config.lua.script_path.iter()
                     .map(|p| path.join(p))
-                    .flat_map(|p| vec![p.join("?.lua"), p.join("/?/init.lua")])
+                    .flat_map(|p| vec![p.join("?.lua"), p.join("?/init.lua")])
                     .enumerate()
                     .fold(OsString::new(), |mut os_str, (index, p)| {
                         if index != 0 { os_str.push(&separator) }
@@ -65,8 +78,11 @@ impl Shiori for LuaShiori {
                         os_str
                     }).into_vec()
             )?;
+            debug!("Script path set.");
 
             runtime.get::<_, Function>("init")?.call::<_, ()>(path_string)?;
+            debug!("Lua initialization complete.");
+
             Ok(responder)
         })?;
 
@@ -76,6 +92,16 @@ impl Shiori for LuaShiori {
             responder: responder,
             lua: lua,
         })
+    }
+}
+
+impl Shiori for LuaShiori {
+    type LoadError = LoadError;
+    fn load(path: PathBuf) -> Result<Self, LoadError> {
+        match LuaShiori::load(path) {
+            Ok(s) => { info!("SHIORI load complete."); Ok(s) },
+            Err(e) => { error!("LOAD ERROR: {:?}", e); Err(e) },
+        }
     }
 
     fn respond(&mut self, request: Request) -> Response {
@@ -107,8 +133,11 @@ impl Shiori for LuaShiori {
     }
 }
 
+#[derive(Debug)]
 pub enum LoadError {
     ConfigError(config::ConfigError),
+    IOError(std::io::Error),
+    LogError(log::SetLoggerError),
     LuaError(rlua::Error),
 }
 
@@ -121,5 +150,17 @@ impl From<config::ConfigError> for LoadError {
 impl From<rlua::Error> for LoadError {
     fn from(error: rlua::Error) -> Self {
         LoadError::LuaError(error)
+    }
+}
+
+impl From<std::io::Error> for LoadError {
+    fn from(error: std::io::Error) -> Self {
+        LoadError::IOError(error)
+    }
+}
+
+impl From<log::SetLoggerError> for LoadError {
+    fn from(error: log::SetLoggerError) -> Self {
+        LoadError::LogError(error)
     }
 }

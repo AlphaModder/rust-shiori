@@ -1,2 +1,2 @@
 [lua]
-path = ["/"]
+script_path = ["./"]

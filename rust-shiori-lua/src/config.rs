@@ -6,7 +6,14 @@ pub use config::ConfigError;
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub search_paths: Vec<PathBuf>,
+    pub lua: LuaConfig,
+    
+}
+
+#[derive(Deserialize)]
+pub struct LuaConfig {
+    #[serde(rename = "script_path")]
+    pub script_path: Vec<PathBuf>,
 }
 
 impl Config {

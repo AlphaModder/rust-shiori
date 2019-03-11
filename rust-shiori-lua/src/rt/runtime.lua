@@ -4,6 +4,7 @@ local utils = require("utils")
 local ok_codes = { GET = 300, NOTIFY = 204 }
 
 local function init(script_path)
+    local script_path = script_path:gsub("\\", "/")
     local SCRIPT_ENV_META = {
         __index = function(table, key) 
             if key == "script" then return shiori.script end
@@ -12,6 +13,7 @@ local function init(script_path)
     }
 
     local SCRIPT_ENV = {
+        _G = SCRIPT_ENV,
         shiori = shiori,
         sakura = require("sakura"),
         f = require("fstring").f,
@@ -21,9 +23,10 @@ local function init(script_path)
     }
 
     setmetatable(SCRIPT_ENV, SCRIPT_ENV_META)
-    package.loaders[#package.loaders + 1] = function(module)
-        local file, err = package.searchpath(script_path)
+    package.searchers[#package.searchers + 1] = function(module)
+        local file, err = package.searchpath(module, script_path)
         if file == nil then 
+            error(script_path .. " | " .. err)
             return err 
         else
             return loadfile(file, "bt", SCRIPT_ENV)
