@@ -7,12 +7,11 @@ publish = false # for now
 
 [dependencies]
 rust-shiori = { path = "../rust-shiori/", default-features = false }
+serde = { version = "1.0", features = ["derive"] }
 rlua = { version = "0.16", default-features = false }
 config = "0.9"
-serde = { version = "1.0", features = ["derive"] }
-byteorder = "1.2"
+log = { version = "0.4.6", features = ["serde"] }
 simplelog = "0.5.3"
-log = "0.4.6"
 
 [build-dependencies]
 cc = { version = "1.0" }

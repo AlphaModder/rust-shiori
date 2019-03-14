@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::ffi::OsString;
 use std::fs::File;
 
@@ -17,11 +17,16 @@ use rust_shiori::{
 
 use rlua::{Lua, Table, Function, Context};
 
-use simplelog::{WriteLogger, LevelFilter, Config as LogConfig};
+use simplelog::{WriteLogger, Config as LogConfig};
 
 mod os_str;
 mod config;
+mod error;
+
 use self::config::Config;
+use self::error::LoadError;
+
+const LUA_VERSION: &str = "5.3";
 
 shiori!(LuaShiori);
 
@@ -29,78 +34,98 @@ shiori!(LuaShiori);
 pub struct LuaShiori {
     path: PathBuf,
     config: config::Config,
-    responder: rlua::RegistryKey,
     lua: Lua,
+    responder: rlua::RegistryKey,
 }
 
 impl LuaShiori {
     fn load(path: PathBuf) -> Result<Self, LoadError> {
-        let log_file = File::create(&path.join("rust-shiori-lua.log"))?;
-        WriteLogger::init(LevelFilter::Debug, LogConfig::default(), log_file)?;
-        debug!("Logging successfully initialized.");
+        let config = Config::try_load(&path.join("rust-shiori.toml"))?;
 
-        let config = Config::try_load(&path.join("shiori.toml"))?;
+        if config.logging.level != log::LevelFilter::Off {
+            let log_file = File::create(&path.join(&config.logging.path))?;
+            let log_config = LogConfig { target: Some(log::Level::Trace), .. LogConfig::default() };
+            WriteLogger::init(config.logging.level, log_config, log_file)?;
+            debug!("Logging successfully initialized.");
+        }
 
-        let lua = Lua::new();
-
-        let preload_modules = [
-            ("fstring", include_str!("rt/fstring.lua"), "format strings"),
-            ("utils", include_str!("rt/utils.lua"), "shiori utils"),
-            ("sakura", include_str!("rt/sakura.lua"), "sakura library"),
-            ("shiori", include_str!("rt/shiori.lua"), "shiori ibrary"),
-        ];
-
-        lua.context(|ctx| -> rlua::Result<_> {
-            let loaded = ctx.globals().get::<_, Table>("package")?.get::<_, Table>("loaded")?;
-            for module in &preload_modules {
-                loaded.set::<_, Table>(module.0, ctx.load(module.1).set_name(module.2)?.call(())?)?;
-            }
-            Ok(())
-        })?;
-        debug!("Lua libraries loaded.");
-
+        let lua = unsafe { Lua::new_with_debug() }; // Debug for fstrings. Not present in script environment.
         let responder = lua.context(|ctx| -> rlua::Result<_> {
+            Self::load_modules(&ctx, &[
+                ("fstring", include_str!("rt/fstring.lua"), "format strings"),
+                ("utils", include_str!("rt/utils.lua"), "shiori utils"),
+                ("sakura", include_str!("rt/sakura.lua"), "sakura library"),
+                ("shiori", include_str!("rt/shiori.lua"), "shiori library"),
+            ])?;
+            debug!("Lua libraries loaded.");
+
             let runtime: Table = ctx.load(include_str!("rt/runtime.lua")).set_name("shiori runtime")?.call(())?;
             debug!("Lua runtime loaded.");
 
             let responder = ctx.create_registry_value(runtime.get::<_, Function>("respond")?)?;
             debug!("Responder function created.");
-            
-            let separator = OsString::from(";");
-            let path_string = ctx.create_string(
-                &config.lua.script_path.iter()
-                    .map(|p| path.join(p))
-                    .flat_map(|p| vec![p.join("?.lua"), p.join("?/init.lua")])
-                    .enumerate()
-                    .fold(OsString::new(), |mut os_str, (index, p)| {
-                        if index != 0 { os_str.push(&separator) }
-                        os_str.push(p.into_os_string());
-                        os_str
-                    }).into_vec()
-            )?;
-            debug!("Script path set.");
 
-            runtime.get::<_, Function>("init")?.call::<_, ()>(path_string)?;
+            Self::set_lua_paths(&ctx, &path, &config)?;
+            debug!("Lua search paths set.");
+            
+            runtime.get::<_, Function>("init")?.call(())?;
             debug!("Lua initialization complete.");
 
             Ok(responder)
         })?;
 
+        info!("SHIORI load complete.");
+
         Ok(LuaShiori {
             path: path,
             config: config,
-            responder: responder,
             lua: lua,
+            responder: responder,
         })
     }
+
+    fn set_lua_paths(ctx: &Context, ghost_path: &Path, config: &Config) -> rlua::Result<()> {
+        let separator = OsString::from(";");
+        let package = ctx.globals().get::<_, Table>("package")?;
+        let set_path = |path: &str, paths: &[PathBuf], suffixes: &[&str]| -> rlua::Result<()> {
+            let path_str = ctx.create_string(
+                &paths.iter()
+                    .map(|p| ghost_path.join(p))
+                    .flat_map(|p| suffixes.iter().map(move |s| p.join(s)))
+                    .enumerate()
+                    .fold(OsString::new(), |mut os_str, (index, p)| {
+                        if index != 0 { os_str.push(&separator) }
+                        os_str.push(p.into_os_string());
+                        os_str
+                    }
+            ).into_vec())?;
+            package.set(path, path_str)?;
+            Ok(())
+        };
+    
+        set_path("script_path", &config.lua.script_path, &["?.lua", "?/init.lua"])?;
+        set_path("path", &config.lua.library_path, &["?.lua", "?/init.lua"])?;
+        set_path("cpath", &config.lua.library_path, &["?.dll", &format!("clib/lua{}/?.dll", LUA_VERSION), "loadall.dll"])?;
+        
+        Ok(())
+    }
+
+    fn load_modules(ctx: &Context, modules: &[(&str, &str, &str)]) -> rlua::Result<()> {
+        let loaded = ctx.globals().get::<_, Table>("package")?.get::<_, Table>("loaded")?;
+        for module in modules {
+            loaded.set::<_, Table>(module.0, ctx.load(module.1).set_name(module.2)?.call(())?)?;
+        }
+        Ok(())
+    }
+
 }
 
 impl Shiori for LuaShiori {
     type LoadError = LoadError;
     fn load(path: PathBuf) -> Result<Self, LoadError> {
         match LuaShiori::load(path) {
-            Ok(s) => { info!("SHIORI load complete."); Ok(s) },
-            Err(e) => { error!("LOAD ERROR: {:?}", e); Err(e) },
+            Ok(s) => Ok(s),
+            Err(e) => { error!("{}", e); Err(e) },
         }
     }
 
@@ -117,14 +142,23 @@ impl Shiori for LuaShiori {
             Ok((r, c)) => {
                 let status = ResponseStatus::from_code(c).unwrap_or(ResponseStatus::InternalServerError);
                 response = response.with_status(status);
-                if request.method() == Method::Get && !status.is_error() {
-                    response = response.with_field("Sender", "rust-shiori-lua");
-                    if let Some(r) = r {
-                        response = response.with_field("Value", &r);
+                if !status.is_error() {
+                    if request.method() == Method::Get {
+                        response = response.with_field("Sender", "rust-shiori-lua");
+                        if let Some(r) = r {
+                            response = response.with_field("Value", &r);
+                        }
+                    }
+                }
+                else {
+                    match r {
+                        Some(e) => error!("A script error occured while responding to a request. Details:\n{}", e),
+                        None => error!("A script error occured while responding to a request. No details available."),
                     }
                 }
             },
-            Err(_) => {
+            Err(e) => {
+                error!("An internal error occured while responding to a request. This is a bug! Details:\n{}", e);
                 response = response.with_status(ResponseStatus::InternalServerError);
             }
         }
@@ -133,34 +167,3 @@ impl Shiori for LuaShiori {
     }
 }
 
-#[derive(Debug)]
-pub enum LoadError {
-    ConfigError(config::ConfigError),
-    IOError(std::io::Error),
-    LogError(log::SetLoggerError),
-    LuaError(rlua::Error),
-}
-
-impl From<config::ConfigError> for LoadError {
-    fn from(error: config::ConfigError) -> Self {
-        LoadError::ConfigError(error)
-    }
-}
-
-impl From<rlua::Error> for LoadError {
-    fn from(error: rlua::Error) -> Self {
-        LoadError::LuaError(error)
-    }
-}
-
-impl From<std::io::Error> for LoadError {
-    fn from(error: std::io::Error) -> Self {
-        LoadError::IOError(error)
-    }
-}
-
-impl From<log::SetLoggerError> for LoadError {
-    fn from(error: log::SetLoggerError) -> Self {
-        LoadError::LogError(error)
-    }
-}

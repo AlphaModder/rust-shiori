@@ -169,35 +169,21 @@
 #define LUA_PATH_MARK           "?"
 #define LUA_EXEC_DIR            "!"
 
-
 /*
-@@ LUA_PATH_DEFAULT is the default path that Lua uses to look for
-** Lua libraries.
-@@ LUA_CPATH_DEFAULT is the default path that Lua uses to look for
-** C libraries.
-** CHANGE them if your machine has a non-conventional directory
-** hierarchy or if you want to install your libraries in
-** non-conventional directories.
-*/
-#define LUA_VDIR	LUA_VERSION_MAJOR "." LUA_VERSION_MINOR
-#if defined(_WIN32)	/* { */
-/*
-** In Windows, any exclamation mark ('!') in the path is replaced by the
-** path of the directory of the executable file of the current process.
-*/
 #define LUA_LDIR	"!\\lua\\"
 #define LUA_CDIR	"!\\"
 #define LUA_SHRDIR	"!\\..\\share\\lua\\" LUA_VDIR "\\"
 #define LUA_PATH_DEFAULT  \
 		LUA_LDIR"?.lua;"  LUA_LDIR"?\\init.lua;" \
 		LUA_CDIR"?.lua;"  LUA_CDIR"?\\init.lua;" \
-		LUA_SHRDIR"?.lua;" LUA_SHRDIR"?\\init.lua" 
+		LUA_SHRDIR"?.lua;" LUA_SHRDIR"?\\init.lua;" \
+		".\\?.lua;" ".\\?\\init.lua"
 #define LUA_CPATH_DEFAULT \
 		LUA_CDIR"?.dll;" \
 		LUA_CDIR"..\\lib\\lua\\" LUA_VDIR "\\?.dll;" \
 		LUA_CDIR"loadall.dll;" ".\\?.dll"
 
-#else			/* }{ */
+#else			
 
 #define LUA_ROOT	"/usr/local/"
 #define LUA_LDIR	LUA_ROOT "share/lua/" LUA_VDIR "/"
@@ -208,8 +194,11 @@
 		"./?.lua;" "./?/init.lua"
 #define LUA_CPATH_DEFAULT \
 		LUA_CDIR"?.so;" LUA_CDIR"loadall.so;" "./?.so"
-#endif			/* } */
+#endif
+*/
 
+#define LUA_PATH_DEFAULT ""
+#define LUA_CPATH_DEFAULT ""
 
 /*
 @@ LUA_DIRSEP is the directory separator (for submodules).

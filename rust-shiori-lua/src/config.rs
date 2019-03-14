@@ -1,19 +1,26 @@
-use serde::Deserialize;
-use config::{Config as RawConfig, File, FileFormat};
 use std::path::{Path, PathBuf};
+
+use config::{Config as RawConfig, File, FileFormat};
+use serde::Deserialize;
 
 pub use config::ConfigError;
 
 #[derive(Deserialize)]
 pub struct Config {
-    pub lua: LuaConfig,
-    
+    pub lua: Lua,
+    pub logging: Logging,
 }
 
 #[derive(Deserialize)]
-pub struct LuaConfig {
-    #[serde(rename = "script_path")]
+pub struct Lua {
     pub script_path: Vec<PathBuf>,
+    pub library_path: Vec<PathBuf>,
+}
+
+#[derive(Deserialize)]
+pub struct Logging {
+    pub level: log::LevelFilter,
+    pub path: PathBuf,
 }
 
 impl Config {

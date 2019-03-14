@@ -1,2 +1,7 @@
 [lua]
 script_path = ["./"]
+library_path = ["./lib/"]
+
+[logging]
+level = "off"
+path = "rust-shiori.log"
