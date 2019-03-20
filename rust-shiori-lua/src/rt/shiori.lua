@@ -2,53 +2,49 @@ local math = require("math")
 local utils = require("utils")
 local sakura = require("sakura")
 local fstring = require("fstring")
+local Set = utils.Set
 
 local shiori = {
+    logger = {},
     event_handlers = {},
     event_preprocessors = {},
     script = nil,
 }
 
+function shiori.logger.log_inner(level, text, params, stack)
+    text = string.format(text, table.unpack(params))
+    stack = stack or 1
+    info = debug.getinfo(1 + stack, "Sl")
+    _log(level, text, info.short_src, info.currentline)
+end
+
+function shiori.logger.log(level, text, ...) shiori.logger.log_inner(level, text, {...}, 2) end
+
+for _, level in ipairs({"trace", "debug", "info", "warn", "error"}) do
+    shiori.logger[level] = function(text, ...) shiori.logger.log_inner(level, text, {...}, 2) end
+end
+
+local function return_errors(func, handler) return function(...) xpcall(func,  ...) end end
+
 function shiori.error_bad_request(message, level)
     level = level or 0
-    error({message=message or "", code=400}, 2 + level)
+    error({text=message or "", code=400}, 2 + level)
 end
 
 function shiori.error_generic(message, level)
     level = level or 0
-    error({message=message or "", code=500}, 2 + level)
-end
-
-function shiori.push_notify_handler(event, handler)
-    table.insert(shiori.event_handlers, 1, 
-        function(method, event)
-            if method == "NOTIFY" then return coroutine.create(handler), false end
-            return nil, false
-        end
-    )
-end
-
-function shiori.push_get_handler(event, handler)
-    table.insert(shiori.event_handlers, 1, 
-        function(method, event)
-            if method == "GET" then return coroutine.create(handler), false end
-            return nil, false
-        end
-    )
+    error({text=message or "", code=500}, 2 + level)
 end
 
 function shiori.push_event_handler(event, handler)
-    table.insert(shiori.event_handlers, 1, function(method, event) return coroutine.create(handler), false end)
+    if not shiori.event_handlers[event] then shiori.event_handlers[event] = {} end
+    table.insert(shiori.event_handlers[event], 1, function(event) return coroutine.create(handler), false end)
 end
 
 function shiori.resume_on_event(event, routine, filter)
-    table.insert(shiori.event_handlers, 1, 
-        function(method, event)
-            if filter(table.unpack(event)) then
-                return routine, true
-            end
-            return nil, false
-        end
+    if not shiori.event_handlers[event] then shiori.event_handlers[event] = {} end
+    table.insert(shiori.event_handlers[event], 1, 
+        function(event) if filter(table.unpack(event)) then return routine, true else return nil, false end end
     )
     coroutine.yield()
 end
@@ -59,14 +55,14 @@ end
 
 local function _CharacterSet(chars)
     local meta = {
-        __call = function(text) shiori.script.say(characters, text, 3) end,
+        __call = function(_, text) shiori.script.say(chars, text, 3) end,
         __add = function(rhs, lhs) return _CharacterSet(rhs.chars + lhs.chars) end
     }
     return setmetatable({chars=chars}, meta)
 end
 
 function shiori.CharacterSet(...)
-    return _CharacterSet(utils.Set{...})
+    return _CharacterSet(Set{...})
 end
 
 function shiori.Script()
@@ -76,7 +72,7 @@ function shiori.Script()
     local function write_command(name, ...)
         local args = {...}
         local text
-        if #args then 
+        if #args > 0 then 
             text = string.format("\\%s[%s]", name, table.concat(args, ","))
         else
             text = string.format("\\%s", name)
@@ -89,17 +85,17 @@ function shiori.Script()
         }
     end
 
-    local function update_chars(characters)
+    local function update_chars(new_chars)
         if active_chars ~= new_chars then
             if #active_chars > 0 then write_command("_s") end
-            if new_chars == Set{0} then 
+            if new_chars == Set{0} then
                 write_command("0")
             elseif new_chars == Set{1} then 
                 write_command("1")
             elseif new_chars == Set{0, 1} or new_chars == Set{1, 0} then 
                 write_command("_s")
             else
-                write_command("_s", table.unpack(new_chars))
+                write_command("_s", table.unpack(utils.set_to_table(new_chars)))
             end
         end
     end

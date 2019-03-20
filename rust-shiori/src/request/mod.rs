@@ -24,6 +24,16 @@ pub enum Method {
     Teach,
 }
 
+impl Method {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Method::Get => "GET",
+            Method::Notify => "NOTIFY",
+            Method::Teach => "TEACH",
+        }
+    }
+}
+
 impl FromStr for Method {
     type Err = ();
     fn from_str(text: &str) -> Result<Method, ()> {

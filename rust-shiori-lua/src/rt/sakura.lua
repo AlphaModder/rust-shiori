@@ -21,10 +21,10 @@ function sakura.parse(script)
     while not done do
         done = true
         for _, pattern in ipairs(sakura.COMMAND_PATTERNS) do
-            s, e = text:find(pattern, pos)
+            local s, e = script:find(pattern, pos)
             if s ~= nil then
                 segments[#segments+1] = { type="text", text=script:sub(pos, s-1)}
-                text, name, argstr = script:match(pattern, pos)
+                local text, name, argstr = script:match(pattern, pos)
                 args = {}
                 if argstr ~= nil then for arg in argstr:gmatch("([^,]+),?") do args[#args+1] = arg end end
                 segments[#segments+1] = { type="command", text=text, name=name, args=args }

@@ -35,9 +35,7 @@ local set_meta = {
     __lt = function(a, b) return a <= b and not (b <= a) end,
     __eq = function(a, b) return a <= b and b <= a end,
     __le = function(a, b)
-        for k in pairs(a) do
-            if not b[k] then return false end
-        end
+        for k in pairs(a) do if not b[k] then return false end end
         return true
     end,
     __add = function(a, b)
@@ -45,7 +43,7 @@ local set_meta = {
         for k, v in pairs(a) do if v == true then new[k] = v end end
         for k, v in pairs(b) do if v == true then new[k] = v end end
         return new
-    end
+    end,
 }
 
 function utils.Set(table)
@@ -53,6 +51,16 @@ function utils.Set(table)
     setmetatable(set, set_meta)
     for _, l in ipairs(table) do set[l] = true end
     return set
+end
+
+function utils.set_to_table(set)
+    local table = {}
+    for k, v in pairs(set) do if v == true then table[#table + 1] = k end end
+    return table
+end
+
+function utils.set_to_string(set)
+    return table.concat(utils.set_to_table(set), ", ")
 end
 
 function utils.StringBuilder()
@@ -63,5 +71,9 @@ function utils.StringBuilder()
         build = function() return table.concat(strings) end
     }
 end
+
+function utils.istable(obj) return type(obj) == "table" end
+
+function utils.second(_, b) return b end
 
 return utils

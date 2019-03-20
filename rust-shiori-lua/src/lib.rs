@@ -1,13 +1,14 @@
-use std::path::{Path, PathBuf};
 use std::ffi::OsString;
 use std::fs::File;
+use std::path::{Path, PathBuf};
+use std::ops::Deref;
 
 #[cfg(windows)]
 use self::os_str::OsStringExt; // Implements `OsString::into_vec` on Windows.
 #[cfg(any(target_os = "redox", unix))]
 use std::os::unix::ffi::OsStringExt;
 
-use log::{info, debug, error};
+use log::{info, debug, error, Level, Record};
 
 use rust_shiori::{
     shiori, Shiori,
@@ -51,6 +52,9 @@ impl LuaShiori {
 
         let lua = unsafe { Lua::new_with_debug() }; // Debug for fstrings. Not present in script environment.
         let responder = lua.context(|ctx| -> rlua::Result<_> {
+            Self::create_lua_logger(&ctx)?;
+            debug!("Lua logging interface loaded.");
+
             Self::load_modules(&ctx, &[
                 ("fstring", include_str!("rt/fstring.lua"), "format strings"),
                 ("utils", include_str!("rt/utils.lua"), "shiori utils"),
@@ -118,6 +122,17 @@ impl LuaShiori {
         Ok(())
     }
 
+    fn create_lua_logger(ctx: &Context) -> rlua::Result<()> {
+        ctx.globals().set("_log", ctx.create_function(
+            |_, (level, text, file, line): (String, String, Option<String>, Option<u32>)| {
+                let level = level.parse().unwrap_or(Level::Debug);
+                let mut record = Record::builder();
+                record.level(level).file(file.as_ref().map(Deref::deref)).line(line);
+                log::logger().log(&record.args(format_args!("{}", text)).build());
+                Ok(())
+            }
+        )?)
+    }
 }
 
 impl Shiori for LuaShiori {
@@ -133,9 +148,9 @@ impl Shiori for LuaShiori {
         let mut response = ResponseBuilder::new().with_field("Charset", "UTF-8");
 
         let respond_raw = |ctx: Context| -> rlua::Result<(Option<String>, u32)> {
-            let field_table = ctx.create_table_from(request.fields().into_iter().map(|(k, v)| (k.as_str(), v.as_str())));
-            let response = ctx.registry_value::<Function>(&self.responder)?.call::<_, Table>(field_table)?;
-            Ok((response.get("response")?, response.get("code")?))
+            let field_table = ctx.create_table_from(request.fields().into_iter().map(|(k, v)| (k.as_str(), v.as_str())))?;
+            let response = ctx.registry_value::<Function>(&self.responder)?.call::<_, Table>((field_table, request.method().as_str()))?;
+            Ok((response.get("text")?, response.get("code")?))
         };
 
         match self.lua.context(respond_raw) {
@@ -152,7 +167,7 @@ impl Shiori for LuaShiori {
                 }
                 else {
                     match r {
-                        Some(e) => error!("A script error occured while responding to a request. Details:\n{}", e),
+                        Some(e) => error!("A script error occured while responding to a request. Details: {}", e),
                         None => error!("A script error occured while responding to a request. No details available."),
                     }
                 }

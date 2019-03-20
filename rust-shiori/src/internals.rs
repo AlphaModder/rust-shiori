@@ -29,7 +29,7 @@ pub unsafe fn request(request: HGLOBAL, len: *mut c_long, shiori: &mut Option<im
             let response = match GStr::capture(request, (*len) as usize).to_utf8_str().map(|s| handle_request(s, shiori)) {
                 Ok(Ok(r)) => r,
                 e @ _ => {
-                    error!("Recieved a corrupt or incorrectly formatted SHIORI request. Details:\n{:?}", e);
+                    warn!("Recieved a corrupt or incorrectly formatted SHIORI request. Details: {:?}", e);
                     format!("SHIORI/{} 400 Bad Request\r\n\r\n", SHIORI_VERSION)
                 }
             };
