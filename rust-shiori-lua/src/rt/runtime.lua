@@ -26,11 +26,9 @@ local function init()
     setmetatable(SCRIPT_ENV, SCRIPT_ENV_META)
     package.searchers[#package.searchers + 1] = function(module)
         local file, err = package.searchpath(module, package.script_path)
-        if file == nil then 
-            return err 
-        else
-            return loadfile(file, "bt", SCRIPT_ENV)
-        end
+        if file == nil then return err end
+        local mod, err = loadfile(file, "bt", SCRIPT_ENV)
+        return (not err and mod) or ("\n\t" .. err)
     end
 
     require("ghost") -- Search for and execute ghost.lua in the ghost folder.
