@@ -1,4 +1,5 @@
 [lua]
+init = "init"
 script_path = ["./"]
 library_path = ["./lib/"]
 

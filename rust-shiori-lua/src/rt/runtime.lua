@@ -5,7 +5,7 @@ local logger = shiori.logger
 
 local ok_codes = { GET = 200, NOTIFY = 204 }
 
-local function init()
+local function init(init_module)
     local SCRIPT_ENV_META = {
         __index = function(table, key) 
             if key == "script" then return shiori.script end
@@ -31,7 +31,7 @@ local function init()
         return (not err and mod) or ("\n\t" .. err)
     end
 
-    require("ghost") -- Search for and execute ghost.lua in the ghost folder.
+    require(init_module)
 end
 
 local function resume_script(routine, event, method)

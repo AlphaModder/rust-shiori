@@ -72,7 +72,7 @@ impl LuaShiori {
             Self::set_lua_paths(&ctx, &path, &config)?;
             debug!("Lua search paths set.");
             
-            runtime.get::<_, Function>("init")?.call(())?;
+            runtime.get::<_, Function>("init")?.call(&*config.lua.init)?;
             debug!("Lua initialization complete.");
 
             Ok(responder)

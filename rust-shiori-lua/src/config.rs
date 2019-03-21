@@ -13,6 +13,7 @@ pub struct Config {
 
 #[derive(Deserialize)]
 pub struct Lua {
+    pub init: String,
     pub script_path: Vec<PathBuf>,
     pub library_path: Vec<PathBuf>,
 }
