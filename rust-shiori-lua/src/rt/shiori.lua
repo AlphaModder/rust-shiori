@@ -65,6 +65,15 @@ function shiori.CharacterSet(...)
     return _CharacterSet(Set{...})
 end
 
+local function switch_escape(s)
+    local len = string.len(s)
+    return string.rep("$", len // 2) .. string.rep("\\", len % 2) 
+end
+
+local function sakura_escape(text)
+    return text:gsub("\n", "$n"):gsub("\\", "$\\"):gsub("[$]+", switch_escape)
+end
+
 function shiori.Script()
     local segments = {}
     local active_chars = {}
@@ -103,7 +112,7 @@ function shiori.Script()
     local function say(characters, text, n)
         n = n or 2
         update_chars(characters)
-        text = fstring.f(text, n)
+        text = sakura_escape(fstring.f(text, n))
         for _, segment in ipairs(sakura.clean(sakura.parse(text))) do segments[#segments + 1] = segment end
     end
 

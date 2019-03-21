@@ -3,7 +3,7 @@ local utils = require("utils")
 local sakura = {}
 
 sakura.COMMAND_PATTERNS = {"(\\(\\))", "(\\(%d))"} -- special cases have to come first
-for _, e in ipairs({"%[([^%[%]]+)%]", "(%d)", "[^%[%d]", "$"}) do
+for _, e in ipairs({"%[([^%[%]]+)%]", "(%d)", ""}) do
     sakura.COMMAND_PATTERNS[#sakura.COMMAND_PATTERNS+1] = string.format("(\\(_?_?[a-zA-Z&!%%*%%-%%?%%+])%s)", e)
 end
 
@@ -45,13 +45,16 @@ function sakura.clean(segments)
     cleaned = {}
     for _, seg in ipairs(segments) do
         if seg.type == "command" then
+            local escape = false
             for _, cmd in ipairs(sakura.BRANCH_COMMANDS) do
-                if seg.text:match("^" .. cmd) ~= nil then
-                    cleaned[#cleaned + 1] = { type="command", text="\\\\", name="\\", args={}}
-                    cleaned[#cleaned + 1] = { type="text", text=seg.text:sub(2)}
-                else
-                    cleaned[#cleaned + 1] = { type="command", text=seg.text, name=seg.name, args=utils.dup(seg.args) }
-                end
+                escape = seg.text:match("^" .. cmd)
+                if escape then break end
+            end
+            if escape then
+                cleaned[#cleaned + 1] = { type="command", text="\\\\", name="\\", args={} }
+                cleaned[#cleaned + 1] = { type="text", text=seg.text:sub(2) }
+            else
+                cleaned[#cleaned + 1] = { type="command", text=seg.text, name=seg.name, args=utils.dup(seg.args) }
             end
         else
             cleaned[#cleaned + 1] = { type="text", text=seg.text }
