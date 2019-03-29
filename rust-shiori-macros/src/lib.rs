@@ -1,5 +1,3 @@
-extern crate syn;
-extern crate quote;
 extern crate proc_macro;
 use std::env;
 use quote::quote;
