@@ -8,6 +8,8 @@ use self::os_str::OsStringExt; // Implements `OsString::into_vec` on Windows.
 #[cfg(any(target_os = "redox", unix))]
 use std::os::unix::ffi::OsStringExt;
 
+use include_lua::*;
+
 use log::{info, debug, error, Level, Record};
 
 use rust_shiori::{
@@ -55,15 +57,10 @@ impl LuaShiori {
             Self::create_lua_logger(&ctx)?;
             debug!("Lua logging interface loaded.");
 
-            Self::load_modules(&ctx, &[
-                ("fstring", include_str!("rt/fstring.lua"), "format strings"),
-                ("utils", include_str!("rt/utils.lua"), "shiori utils"),
-                ("sakura", include_str!("rt/sakura.lua"), "sakura library"),
-                ("shiori", include_str!("rt/shiori.lua"), "shiori library"),
-            ])?;
+            ctx.add_modules(include_lua!("[shiori libs]": "lib"))?;
             debug!("Lua libraries loaded.");
 
-            let runtime: Table = ctx.load(include_str!("rt/runtime.lua")).set_name("shiori runtime")?.call(())?;
+            let runtime: Table = ctx.load(include_str!("runtime.lua")).set_name("shiori runtime")?.call(())?;
             debug!("Lua runtime loaded.");
 
             let responder = ctx.create_registry_value(runtime.get::<_, Function>("respond")?)?;
@@ -111,14 +108,6 @@ impl LuaShiori {
         set_path("path", &config.lua.library_path, &["?.lua", "?/init.lua"])?;
         set_path("cpath", &config.lua.library_path, &["?.dll", &format!("clib/lua{}/?.dll", LUA_VERSION), "loadall.dll"])?;
         
-        Ok(())
-    }
-
-    fn load_modules(ctx: &Context, modules: &[(&str, &str, &str)]) -> rlua::Result<()> {
-        let loaded = ctx.globals().get::<_, Table>("package")?.get::<_, Table>("loaded")?;
-        for module in modules {
-            loaded.set::<_, Table>(module.0, ctx.load(module.1).set_name(module.2)?.call(())?)?;
-        }
         Ok(())
     }
 

@@ -1,26 +1,29 @@
-local shiori = require("shiori")
 local utils = require("utils")
-
-local logger = shiori.logger
+local logger = require("logger")
+local shiori = require("shiori")
+local events = require("shiori.events")
+local script = require("shiori.script")
 
 local ok_codes = { GET = 200, NOTIFY = 204 }
 
 local function init(init_module)
     local SCRIPT_ENV_META = {
         __index = function(table, key) 
-            if key == "script" then return shiori.script end
-            return shiori.logger[key] or _G[key]
+            if key == "script" then return script.current end
+            return logger[key] or _G[key]
         end
     }
 
     local SCRIPT_ENV = {
         _G = SCRIPT_ENV,
+
         shiori = shiori,
-        sakura = require("sakura"),
+        event = shiori.event,
+        bad_request = shiori.error_bad_request,
+        script_error = shiori.error_generic,
+
         f = require("fstring").f,
         choose = utils.choose,
-        bad_request = shiori.error_bad_request,
-        shiori_error = shiori.error_generic,
     }
 
     setmetatable(SCRIPT_ENV, SCRIPT_ENV_META)
@@ -34,11 +37,9 @@ local function init(init_module)
     require(init_module)
 end
 
-local function resume_script(routine, event, method)
-    local script = nil
-    if method == "GET" then script = shiori.Script() end
-    shiori.script = script
-    local s, e = coroutine.resume(routine, table.unpack(event))
+local function resume_script(routine, id, event, method)
+    if method == "GET" then script.current = script.Script() else script.current = nil end
+    local s, e = coroutine.resume(routine, id, table.unpack(event)) -- Deal with packing stuff here
 
     if not s then
         if e == "cannot resume dead coroutine" then
@@ -50,15 +51,15 @@ local function resume_script(routine, event, method)
         end
     end
     
-    return { text = (script and script.to_sakura()) or nil, code = ok_codes[method] }
+    return { text = script.current and script.current.to_sakura(), code = ok_codes[method] }
 end
 
 local function respond(event, method)
     if event and event["ID"] then
-        local preprocessor = shiori.event_preprocessors[event["ID"]]
+        local preprocessor = events.event_preprocessors[event["ID"]]
         local procevent = {event}
         if preprocessor then procevent = table.pack(preprocessor(event)) end
-        local handlers = shiori.event_handlers[event["ID"]] or {}
+        local handlers = events.event_handlers[event["ID"]] or {}
         local routine = nil
         for i, handler in ipairs(handlers) do
             local remove
@@ -66,9 +67,9 @@ local function respond(event, method)
             if remove then handlers[i] = nil end
             if routine then break end
         end
-        shiori.event_handlers[event["ID"]] = utils.remove_nils(handlers)
+        events.event_handlers[event["ID"]] = utils.remove_nils(handlers)
         if routine then
-            return resume_script(routine, procevent, method)
+            return resume_script(routine, event["ID"], procevent, method)
         end
     end
     return { text = nil, code = 204 }

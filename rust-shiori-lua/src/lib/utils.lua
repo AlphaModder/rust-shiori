@@ -40,10 +40,15 @@ local set_meta = {
     end,
     __add = function(a, b)
         local new = utils.Set{}
-        for k, v in pairs(a) do if v == true then new[k] = v end end
-        for k, v in pairs(b) do if v == true then new[k] = v end end
+        for k, v in pairs(a) do if v then new[k] = v end end
+        for k, v in pairs(b) do if v then new[k] = v end end
         return new
     end,
+    __len = function(s)
+        local n = 0
+        for k, v in pairs(s) do if v then n = n + 1 end end
+        return n
+    end
 }
 
 function utils.Set(table)
