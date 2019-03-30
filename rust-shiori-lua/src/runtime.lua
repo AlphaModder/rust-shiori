@@ -19,8 +19,8 @@ local function init(init_module)
 
         shiori = shiori,
         event = shiori.event,
-        bad_request = shiori.error_bad_request,
-        script_error = shiori.error_generic,
+        bad_request = shiori.bad_request,
+        script_error = shiori.script_error,
 
         f = require("fstring").f,
         choose = utils.choose,
@@ -39,7 +39,7 @@ end
 
 local function resume_script(routine, id, event, method)
     if method == "GET" then script.current = script.Script() else script.current = nil end
-    local s, e = coroutine.resume(routine, id, table.unpack(event)) -- Deal with packing stuff here
+    local s, e = coroutine.resume(routine, id, event) -- Deal with packing stuff here
 
     if not s then
         if e == "cannot resume dead coroutine" then

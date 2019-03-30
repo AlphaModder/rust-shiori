@@ -1,5 +1,6 @@
 local utils = require("utils")
 local events = require("shiori.events")
+local input = require("shiori.input")
 local fstring = require("fstring")
 local sakura = require("sakura")
 
@@ -88,16 +89,19 @@ function script_mod.Script()
         write_command("!", (enable and "enter") or "leave", "passivemode")
     end
 
-    function script.communicate(default_text)
-        if default_text ~= nil then 
-            write_command("!", "open", "communicatebox", default_text)
-        else
-            write_command("!", "open", "communicatebox")
+    for _, i in ipairs{"text", "password", "slider", "date", "time"} do
+        script[i .. "_input"] = function(args)
+            args = args or {}
+            args.callback = nil
+            args.type = i
+            return input(write_command, args)
         end
-
-        local event, params = events.resume_on_events { "OnCommunicate", "OnCommunicateInputCancel" }
- 
-        if event == "OnCommunicate" then return params[0] else return nil end
+        script[i .. "_input_async"] = function(args)
+            args = args or {}
+            args.callback = args.callback or function() end
+            args.type = i
+            return input(write_command, args)
+        end
     end
 
     function script.to_sakura() return sakura.write(segments) end

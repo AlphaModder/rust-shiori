@@ -3,7 +3,7 @@ local events = {
     event_preprocessors = {},
 }
 
-function events.push_event_handler(event, func) 
+function events.push_event_handler(event, func)
     if not events.event_handlers[event] then events.event_handlers[event] = {} end
     table.insert(events.event_handlers[event], 1, func)
 end
