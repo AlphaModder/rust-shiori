@@ -39,11 +39,12 @@ local function parse_result(type, result)
 end
 
 local function wait_for_input(type, id)
+    local filter = function(i, _) return i == id end
     local event, params = events.resume_on_events { 
-        OnUserInput = function(i, _) return i == id end,
-        OnUserInputCancel = function(i, _) return i == id end,
+        OnUserInput = filter,
+        OnUserInputCancel = filter,
     }
-    if event == "OnUserInput" then return parse_result(type, event[1]) else return nil end
+    if event == "OnUserInput" then return parse_result(type, params[2]) else return nil end
 end
 
 local function input_sync(write_command, args, id, cmd)
@@ -102,7 +103,7 @@ end
 -- maximum: The slider's maximum value
 local function input(write_command, args)
     args.type = args.type .. "input"
-    if args.type == "textinput" then type = "inputbox" end
+    if args.type == "textinput" then args.type = "inputbox" end
     args.timeout = args.timeout or 0
     if args.clear == nil then args.clear = true end
 
@@ -124,4 +125,4 @@ local function input(write_command, args)
     end
 end
 
-return Input
+return input

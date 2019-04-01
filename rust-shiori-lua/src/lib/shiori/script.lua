@@ -81,10 +81,6 @@ function script_mod.Script()
         for _, segment in ipairs(sakura.clean(sakura.parse(text))) do segments[#segments + 1] = segment end
     end
 
-    function script.raise(event, ...)
-        write_command("!", "raise", ...)
-    end
-
     function script.passive_mode(enable)
         write_command("!", (enable and "enter") or "leave", "passivemode")
     end

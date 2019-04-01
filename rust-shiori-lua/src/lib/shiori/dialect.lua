@@ -52,7 +52,6 @@ function dialect.tokenize(text, n)
         local content = resolve_expr(code, env)
         return fmt and string.format(fmt, content) or tostring(content)
     end)
-
-
 end
+
 
