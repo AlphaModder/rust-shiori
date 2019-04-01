@@ -1,4 +1,5 @@
-local events = require("shiori.events")
+local events = rsl_require("shiori.events")
+local script = rsl_require("shiori.script")
 
 local lua_type = type
 
@@ -47,8 +48,8 @@ local function wait_for_input(type, id)
     if event == "OnUserInput" then return parse_result(type, params[2]) else return nil end
 end
 
-local function input_sync(write_command, args, id, cmd)
-    write_command("!", "open", args.type, id, table.unpack(cmd))
+local function input_sync(args, id, cmd)
+    script.current.write_command("!", "open", args.type, id, table.unpack(cmd))
     if not args.multiple then
        return wait_for_input(args.type, id)
     else
@@ -60,16 +61,16 @@ local function input_sync(write_command, args, id, cmd)
     end
 end
 
-local function input_async(write_command, args, id, cmd)
+local function input_async(args, id, cmd)
     local to_resume = nil
     local routine = coroutine.create(function()
         local input = nil
-        write_command("!", "open", args.type, id, table.unpack(params))
+        script.current.write_command("!", "open", args.type, id, table.unpack(params))
         if args.multiple then
             repeat
                 input = wait_for_input(args.type, id)
                 if input and args.callback(input) == false then
-                    write_command("!", "close", args.type, id)
+                    script.current.write_command("!", "close", args.type, id)
                     break
                 end
             until input == nil
@@ -101,7 +102,7 @@ end
 -- Additionally, if type is "slider", the following keys are required:
 -- minimum: The slider's minimum value
 -- maximum: The slider's maximum value
-local function input(write_command, args)
+local function input(args)
     args.type = args.type .. "input"
     if args.type == "textinput" then args.type = "inputbox" end
     args.timeout = args.timeout or 0
@@ -119,9 +120,9 @@ local function input(write_command, args)
 
     local id = next_input_id()
     if args.callback == nil then 
-        return input_sync(write_command, args, id, params)
+        return input_sync(args, id, params)
     else
-        return input_async(write_command, args, id, params)
+        return input_async(args, id, params)
     end
 end
 

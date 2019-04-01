@@ -1,15 +1,28 @@
-local utils = require("utils")
-local logger = require("logger")
-local shiori = require("shiori")
-local events = require("shiori.events")
-local script = require("shiori.script")
+local utils, logger, shiori, events, script, ScriptInterface
 
-local ok_codes = { GET = 200, NOTIFY = 204 }
+local interface = nil
 
-local function init(init_module)
+local function init(init_module, searcher)
+    local loaded = {}
+    _G.rsl_require = function(module)
+        if not loaded[module] then
+            local loader = searcher(module)
+            if loader then loaded[module] = loader(module) end
+        end
+        return loaded[module] or error(("Could not load internal module %s!"):format(module))
+    end
+
+    utils = rsl_require("utils")
+    logger = rsl_require("logger")
+    events = rsl_require("shiori.events")
+    script = rsl_require("shiori.script")
+    shiori = rsl_require("shiori")
+    ScriptInterface = rsl_require("shiori.interface")
+
     local SCRIPT_ENV_META = {
-        __index = function(table, key) 
-            if key == "script" then return script.current end
+        __index = function(table, key)
+            if key == "rsl_require" then return nil end
+            if key == "script" then return interface end
             return logger[key] or _G[key]
         end
     }
@@ -22,7 +35,7 @@ local function init(init_module)
         bad_request = shiori.bad_request,
         script_error = shiori.script_error,
 
-        f = require("fstring").f,
+        f = rsl_require("fstring").f,
         choose = utils.choose,
     }
 
@@ -37,10 +50,13 @@ local function init(init_module)
     require(init_module)
 end
 
+local ok_codes = { GET = 200, NOTIFY = 204 }
+
 local function resume_script(routine, id, event, method)
     if method == "GET" then script.current = script.Script() else script.current = nil end
-    local s, e = coroutine.resume(routine, id, event) -- Deal with packing stuff here
+    interface = script.current and ScriptInterface()
 
+    local s, e = coroutine.resume(routine, id, event) -- Deal with packing stuff here
     if not s then
         if e == "cannot resume dead coroutine" then
             return { text = "Attempt to resume a script that has already ended.", code = 500 }

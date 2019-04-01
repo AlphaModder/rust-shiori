@@ -1,24 +1,13 @@
-local utils = require("utils")
-local events = require("shiori.events")
-local input = require("shiori.input")
-local fstring = require("fstring")
-local sakura = require("sakura")
+local utils = rsl_require("utils")
+local events = rsl_require("shiori.events")
+local fstring = rsl_require("fstring")
+local sakura = rsl_require("sakura")
 
 local Set = utils.Set
 
-local script_mod = {
+local script = {
     current = nil,
 }
-
-local function _CharacterSet(chars)
-    local meta = {
-        __call = function(_, text) script_mod.current.say(chars, text, 3) end,
-        __add = function(rhs, lhs) return _CharacterSet(rhs.chars + lhs.chars) end
-    }
-    return setmetatable({chars=chars}, meta)
-end
-
-function script_mod.CharacterSet(...) return _CharacterSet(Set{...}) end
 
 local function switch_escape(s)
     local len = string.len(s)
@@ -29,16 +18,14 @@ local function sakura_escape(text)
     return text:gsub("\n", "$n"):gsub("\\", "$\\"):gsub("[$]+", switch_escape)
 end
 
-function script_mod.Script()
+function script.Script()
     local segments = {}
     local active_chars = Set{}
     local in_choice_group = false
 
-    local script = {}
+    local methods = {}
 
-    -- Private functions
-
-    local function write_command(name, ...)
+    function methods.write_command(name, ...)
         local args = {...}
         local text
         if #args > 0 then 
@@ -56,53 +43,40 @@ function script_mod.Script()
 
     local function update_chars(new_chars)
         if active_chars ~= new_chars then
-            if #active_chars > 0 then write_command("_s") end
+            if #active_chars > 0 then methods.write_command("_s") end
             if new_chars == Set{0} then
-                write_command("0")
+                methods.write_command("0")
             elseif new_chars == Set{1} then 
-                write_command("1")
+                methods.write_command("1")
             elseif new_chars == Set{0, 1} or new_chars == Set{1, 0} then 
-                write_command("_s")
+                methods.write_command("_s")
             elseif #new_chars == 1 then
-                write_command("p", utils.set_to_table(new_chars)[0]) 
+                methods.write_command("p", utils.set_to_table(new_chars)[0]) 
             else
-                write_command("_s", table.unpack(utils.set_to_table(new_chars)))
+                methods.write_command("_s", table.unpack(utils.set_to_table(new_chars)))
             end
             active_chars = new_chars
         end
     end
 
-    -- Public functions
-
-    function script.say(characters, text, n)
+    function methods.say(characters, text, n)
         n = n or 2
         update_chars(characters)
         text = sakura_escape(fstring.f(text, n))
         for _, segment in ipairs(sakura.clean(sakura.parse(text))) do segments[#segments + 1] = segment end
     end
 
-    function script.passive_mode(enable)
-        write_command("!", (enable and "enter") or "leave", "passivemode")
-    end
+    function methods.to_sakura() return sakura.write(segments) end
 
-    for _, i in ipairs{"text", "password", "slider", "date", "time"} do
-        script[i .. "_input"] = function(args)
-            args = args or {}
-            args.callback = nil
-            args.type = i
-            return input(write_command, args)
-        end
-        script[i .. "_input_async"] = function(args)
-            args = args or {}
-            args.callback = args.callback or function() end
-            args.type = i
-            return input(write_command, args)
-        end
-    end
-
-    function script.to_sakura() return sakura.write(segments) end
-
-    return script
+    return methods
 end
 
-return script_mod
+function script.CharacterSet(chars)
+    local meta = {
+        __call = function(_, text) script.current.say(chars, text, 3) end,
+        __add = function(rhs, lhs) return script.CharacterSet(rhs.chars + lhs.chars) end
+    }
+    return setmetatable({chars=chars}, meta)
+end
+
+return script

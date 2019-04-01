@@ -57,7 +57,7 @@ impl LuaShiori {
             Self::create_lua_logger(&ctx)?;
             debug!("Lua logging interface loaded.");
 
-            ctx.add_modules(include_lua!("[shiori libs]": "lib"))?;
+            let searcher = ctx.make_searcher(include_lua!("[shiori libs]": "lib"))?;
             debug!("Lua libraries loaded.");
 
             let runtime: Table = ctx.load(include_str!("runtime.lua")).set_name("shiori runtime")?.call(())?;
@@ -69,7 +69,7 @@ impl LuaShiori {
             Self::set_lua_paths(&ctx, &path, &config)?;
             debug!("Lua search paths set.");
             
-            runtime.get::<_, Function>("init")?.call(&*config.lua.init)?;
+            runtime.get::<_, Function>("init")?.call((&*config.lua.init, searcher))?;
             debug!("Lua initialization complete.");
 
             Ok(responder)

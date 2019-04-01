@@ -1,4 +1,4 @@
-local utils = require("utils")
+local utils = rsl_require("utils")
 
 local sakura = {}
 
