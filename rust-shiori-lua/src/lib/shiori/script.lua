@@ -1,22 +1,14 @@
 local utils = rsl_require("utils")
 local events = rsl_require("shiori.events")
-local fstring = rsl_require("fstring")
+local dialect = rsl_require("shiori.dialect")
 local sakura = rsl_require("sakura")
+local logger = rsl_require("logger")
 
 local Set = utils.Set
 
 local script = {
     current = nil,
 }
-
-local function switch_escape(s)
-    local len = string.len(s)
-    return string.rep("$", len // 2) .. string.rep("\\", len % 2) 
-end
-
-local function sakura_escape(text)
-    return text:gsub("\n", "$n"):gsub("\\", "$\\"):gsub("[$]+", switch_escape)
-end
 
 function script.Script()
     local segments = {}
@@ -60,10 +52,27 @@ function script.Script()
     end
 
     function methods.say(characters, text, n)
-        n = n or 2
+        n = n or 1
         update_chars(characters)
-        text = sakura_escape(fstring.f(text, n))
-        for _, segment in ipairs(sakura.clean(sakura.parse(text))) do segments[#segments + 1] = segment end
+
+        local tokens = dialect.tokenize(text, n + 1)
+
+        local has_choice = false
+        for i, token in ipairs(tokens) do 
+            utils.extend(segments, token.to_sakura(i))
+            has_choice = has_choice or token.is_choice
+        end
+        
+        if has_choice then
+            local event, params = events.resume_on_events { "OnChoiceSelect", "OnChoiceTimeout" }
+ 
+            if event == "OnChoiceSelect" then
+                local choice = tonumber(params[1]:match("Choice(%d+)"))
+                return tokens[choice].choose()
+            elseif event == "OnChoiceTimeout" then
+                return nil
+            end
+        end
     end
 
     function methods.to_sakura() return sakura.write(segments) end
@@ -73,7 +82,7 @@ end
 
 function script.CharacterSet(chars)
     local meta = {
-        __call = function(_, text) script.current.say(chars, text, 3) end,
+        __call = function(_, text) return script.current.say(chars, text, 2) end,
         __add = function(rhs, lhs) return script.CharacterSet(rhs.chars + lhs.chars) end
     }
     return setmetatable({chars=chars}, meta)

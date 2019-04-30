@@ -19,14 +19,18 @@ function utils.contains(array, val)
     return false
 end
 
-function utils.dup(array)
-    new = {}
-    for _, item in ipairs(array) do new[#new + 1] = item end
-    return new
+function utils.append(array, val)
+    array[#array + 1] = val
 end
 
 function utils.extend(a1, a2)
-    for _, item in ipairs(a2) do a1[#a1 + 1] = item end
+    for _, item in ipairs(a2) do utils.append(a1, item) end
+end
+
+function utils.dup(array)
+    new = {}
+    utils.extend(new, array)
+    return new
 end
 
 function utils.choose(choices) return choices[math.rand(1, #choices)] end
