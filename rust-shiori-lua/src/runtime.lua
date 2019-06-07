@@ -16,6 +16,7 @@ local function init(init_module, searcher)
     logger = rsl_require("logger")
     events = rsl_require("shiori.events")
     script = rsl_require("shiori.script")
+    dialect = rsl_require("shiori.dialect")
     shiori = rsl_require("shiori")
     ScriptInterface = rsl_require("shiori.interface")
 
@@ -34,8 +35,8 @@ local function init(init_module, searcher)
         event = shiori.event,
         bad_request = shiori.bad_request,
         script_error = shiori.script_error,
+        f = dialect.substitute,
 
-        f = rsl_require("fstring").f,
         choose = utils.choose,
     }
 

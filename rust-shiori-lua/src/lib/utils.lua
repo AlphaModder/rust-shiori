@@ -33,7 +33,7 @@ function utils.dup(array)
     return new
 end
 
-function utils.choose(choices) return choices[math.rand(1, #choices)] end
+function utils.choose(choices) return choices[math.random(#choices)] end
 
 local set_meta = {
     __lt = function(a, b) return a <= b and not (b <= a) end,

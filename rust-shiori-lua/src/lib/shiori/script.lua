@@ -2,7 +2,6 @@ local utils = rsl_require("utils")
 local events = rsl_require("shiori.events")
 local dialect = rsl_require("shiori.dialect")
 local sakura = rsl_require("sakura")
-local logger = rsl_require("logger")
 
 local Set = utils.Set
 
@@ -82,7 +81,7 @@ end
 
 function script.CharacterSet(chars)
     local meta = {
-        __call = function(_, text) return script.current.say(chars, text, 2) end,
+        __call = function(_, text) return script.current.say(chars, text, 1) end,
         __add = function(rhs, lhs) return script.CharacterSet(rhs.chars + lhs.chars) end
     }
     return setmetatable({chars=chars}, meta)

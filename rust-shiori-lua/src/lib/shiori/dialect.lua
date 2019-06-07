@@ -1,3 +1,7 @@
+-- This file's implementation of interpolated strings is based on the following:
+-- https://github.com/hishamhm/f-strings/blob/master/F.lua. 
+-- Many thanks to hishamhm for writing it!
+
 local utils = rsl_require("utils")
 local events = rsl_require("shiori.events")
 local sakura = rsl_require("sakura")
@@ -24,9 +28,9 @@ local function create_expr_env(n)
     env.outer = _ENV and (env.locals["_ENV"] or env.upvalues["_ENV"] or _ENV)
 
     return setmetatable(env, {
-        __index = function(env, k) 
+        __index = function(env, k)
             if env.upvalue_names[k] then return env.upvalues[k] end
-            if env.local_names[k] then return env.local_names[k] end
+            if env.local_names[k] then return env.locals[k] end
             return env.outer[k]
         end
     })
@@ -68,6 +72,21 @@ local TAG_PATTERNS = {
     ["c:(.+)"] = function(env, expr) return ChoiceTag(function() return resolve_expr(expr, env) end) end,
     ["/c"] = function(_) return CloseChoiceTag() end,
 }
+
+function dialect.substitute(text, n)
+    n = n or 1
+
+    -- Avoid recomputing locals and upvalues for every expression.
+    local env = create_expr_env(n + 1)
+
+    -- Resolve substitutions
+    text = text:gsub("$%b{}", function(block)
+        local code, fmt = block:match("{(.*):(%%.*)}")
+        code = code or block:match("{(.*)}")
+        local content = resolve_expr(code, env)
+        return fmt and string.format(fmt, content) or tostring(content)
+    end)
+end
 
 function dialect.tokenize(text, n)
     n = n or 1
