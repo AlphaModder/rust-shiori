@@ -81,7 +81,7 @@ end
 
 function script.CharacterSet(chars)
     local meta = {
-        __call = function(_, text) return script.current.say(chars, text, 1) end,
+        __call = debug.notail(function(_, text) return script.current.say(chars, text, 1) end),
         __add = function(rhs, lhs) return script.CharacterSet(rhs.chars + lhs.chars) end
     }
     return setmetatable({chars=chars}, meta)

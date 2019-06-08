@@ -189,6 +189,12 @@ static int db_getinfo (lua_State *L) {
   return 1;  /* return table */
 }
 
+static int db_notail (lua_State *L) {
+  if(!lua_notail(L)) {
+    lua_pushnil(L);
+  }
+  return 1;
+}
 
 static int db_getlocal (lua_State *L) {
   int arg;
@@ -445,6 +451,7 @@ static const luaL_Reg dblib[] = {
   {"setmetatable", db_setmetatable},
   {"setupvalue", db_setupvalue},
   {"traceback", db_traceback},
+  {"notail", db_notail},
   {NULL, NULL}
 };
 

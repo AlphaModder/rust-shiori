@@ -10,7 +10,7 @@ use std::os::unix::ffi::OsStringExt;
 
 use include_lua::*;
 
-use log::{info, debug, error, Level, Record};
+use log::{info, debug, warn, error, Level, Record};
 
 use rust_shiori::{
     shiori, Shiori,
@@ -25,9 +25,10 @@ use simplelog::{WriteLogger, Config as LogConfig};
 mod os_str;
 mod config;
 mod error;
+mod persistent;
 
 use self::config::Config;
-use self::error::LoadError;
+use self::error::*;
 
 const LUA_VERSION: &str = "5.3";
 
@@ -53,9 +54,12 @@ impl LuaShiori {
         }
 
         let lua = unsafe { Lua::new_with_debug() }; // Debug for fstrings. Not present in script environment.
-        let responder = lua.context(|ctx| -> rlua::Result<_> {
+        let responder = lua.context(|ctx| -> Result<_, LoadError> {
             Self::create_lua_logger(&ctx)?;
             debug!("Lua logging interface loaded.");
+
+            // Self::add_notail_hack(&ctx)?;
+            // debug!("Installed tail-call prevention hack.");
 
             let searcher = ctx.make_searcher(include_lua!("[shiori libs]": "lib"))?;
             debug!("Lua libraries loaded.");
@@ -68,6 +72,9 @@ impl LuaShiori {
 
             Self::set_lua_paths(&ctx, &path, &config)?;
             debug!("Lua search paths set.");
+
+            ctx.globals().set("persistent", Self::load_persistent(&ctx, &config)?)?;
+            debug!("Persistent data loaded.");
             
             runtime.get::<_, Function>("init")?.call((&*config.lua.init, searcher))?;
             debug!("Lua initialization complete.");
@@ -122,6 +129,25 @@ impl LuaShiori {
             }
         )?)
     }
+
+    fn load_persistent<'a>(ctx: &Context<'a>, config: &Config) -> Result<Table<'a>, LoadError> {
+        if let Ok(mut file) = File::open(&config.lua.persistent) {
+            if let Ok(rmpv::Value::Map(m)) = rmpv::decode::read_value(&mut file) {
+                return Ok(persistent::from_rmpv(ctx, m, "<root>".to_string())?)
+            }
+        }
+        warn!("Persistent data located in {} was corrupt or missing.", config.lua.persistent.display());
+        Ok(ctx.create_table()?)
+    }
+
+    fn unload_persistent(&mut self) -> Result<(), UnloadError> {
+        self.lua.context(|ctx| {
+            let persistent = persistent::to_rmpv(ctx.globals().get("persistent")?, "<root>".to_string());
+            let mut file = File::create(&self.config.lua.persistent)?;
+            rmpv::encode::write_value(&mut file, &persistent).map_err(|e| e.into_io())?;
+            Ok(())
+        })
+    }
 }
 
 impl Shiori for LuaShiori {
@@ -168,6 +194,10 @@ impl Shiori for LuaShiori {
         }
         
         response.build().unwrap()
+    }
+
+    fn unload(&mut self) {
+        if let Err(e) = self.unload_persistent() { error!("{}", e); }
     }
 }
 

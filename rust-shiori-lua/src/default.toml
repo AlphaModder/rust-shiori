@@ -2,6 +2,7 @@
 init = "init"
 script_path = ["./"]
 library_path = ["./lib/"]
+persistent = "./profile/persistent.dat"
 
 [logging]
 level = "off"

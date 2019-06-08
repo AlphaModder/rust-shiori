@@ -449,6 +449,11 @@ static int luaB_tostring (lua_State *L) {
   return 1;
 }
 
+static int luaB_givetrue (lua_State *L) {
+  lua_pushboolean(L, 1);
+  return 1;
+}
+
 
 static const luaL_Reg base_funcs[] = {
   {"assert", luaB_assert},
@@ -476,6 +481,7 @@ static const luaL_Reg base_funcs[] = {
   {"tostring", luaB_tostring},
   {"type", luaB_type},
   {"xpcall", luaB_xpcall},
+  {"givetrue", luaB_givetrue},
   /* placeholders */
   {"_G", NULL},
   {"_VERSION", NULL},

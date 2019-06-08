@@ -5,6 +5,7 @@
 local utils = rsl_require("utils")
 local events = rsl_require("shiori.events")
 local sakura = rsl_require("sakura")
+local logger = rsl_require("logger")
 
 local dialect = {}
 
@@ -14,7 +15,10 @@ local function scan_table(scanner, arg)
     local i = 1
     repeat
        local name, value = scanner(arg, i)
-       if name ~= nil then data[name], names[name] = value, true end
+       if name ~= nil then
+        logger.debug("found %s", name)
+        data[name], names[name] = value, true 
+       end
        i = i + 1
     until name == nil
     return data, names
@@ -25,12 +29,13 @@ local function create_expr_env(n)
     local env = {}
     env.locals, env.local_names = scan_table(debug.getlocal, 2 + n)
     env.upvalues, env.upvalue_names = scan_table(debug.getupvalue, debug.getinfo(1 + n, "f").func)
-    env.outer = _ENV and (env.locals["_ENV"] or env.upvalues["_ENV"] or _ENV)
-
+    env.outer = env.locals["_ENV"] or env.upvalues["_ENV"]
+    logger.debug(debug.traceback())
+    logger.debug("level %s", n)
     return setmetatable(env, {
         __index = function(env, k)
-            if env.upvalue_names[k] then return env.upvalues[k] end
             if env.local_names[k] then return env.locals[k] end
+            if env.upvalue_names[k] then return env.upvalues[k] end
             return env.outer[k]
         end
     })
@@ -73,20 +78,20 @@ local TAG_PATTERNS = {
     ["/c"] = function(_) return CloseChoiceTag() end,
 }
 
-function dialect.substitute(text, n)
+dialect.substitute = debug.notail(function(text, n)
     n = n or 1
 
     -- Avoid recomputing locals and upvalues for every expression.
     local env = create_expr_env(n + 1)
 
     -- Resolve substitutions
-    text = text:gsub("$%b{}", function(block)
+    return text:gsub("$%b{}", function(block)
         local code, fmt = block:match("{(.*):(%%.*)}")
         code = code or block:match("{(.*)}")
         local content = resolve_expr(code, env)
         return fmt and string.format(fmt, content) or tostring(content)
     end)
-end
+end)
 
 function dialect.tokenize(text, n)
     n = n or 1

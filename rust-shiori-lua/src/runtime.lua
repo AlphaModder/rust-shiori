@@ -12,6 +12,8 @@ local function init(init_module, searcher)
         return loaded[module] or error(("Could not load internal module %s!"):format(module))
     end
 
+    assert(debug.notail)
+
     utils = rsl_require("utils")
     logger = rsl_require("logger")
     events = rsl_require("shiori.events")
