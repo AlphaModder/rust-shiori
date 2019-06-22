@@ -1,7 +1,21 @@
 local utils = rsl_require("utils")
 local dtags = rsl_require("script.dtags")
 
+-- If expanding a multiline string could cause a delimiter conflict, this function
+-- will automatically increase the number of equals signs in its delimiters until
+-- this is no longer a possibility.
+local function prepare_string(str, open, close)
+    local content = str:match("^%[=*%[(.*)%]=*%]$")
+    if content then
+        local ne = ""
+        content:gsub("%](=*)", function(e) if ne:len() <= e:len() then ne = e .. "=" end end)
+        return ("[%s[%s]%s]"):format(ne, content, ne), ("[%s["):format(ne), ("]%s]"):format(ne)
+    end
+    return str, open, close
+end
+
 local function expand_string(str, open, close, escapes)
+    local str, open, close = prepare_string(str, open, close)
     for prefix, tags in pairs(dtags.TAGS) do
         local pattern = ("(\\*)(%s)(%%b{})"):format(prefix)
         str = str:gsub(pattern, function(slashes, pfull, pkeep, body)
@@ -60,6 +74,8 @@ local function process_file(file)
     utils.append(buf, file:sub(pos))
     return table.concat(buf)
 end
+
+
 
 return {
     process_file = process_file,
