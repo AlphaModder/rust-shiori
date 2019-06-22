@@ -79,7 +79,7 @@ mod request_type {
                 syn::DataUnion { 
                     fields: syn::FieldsNamed { named: ref mut f, .. }, .. 
                 }
-            ) => (Some(f), Box::new(|init| quote! { #name { #init } }) as Box<Fn(_) -> _>),
+            ) => (Some(f), Box::new(|init| quote! { #name { #init } }) as Box<dyn Fn(_) -> _>),
             syn::Data::Struct(
                 syn::DataStruct { 
                     fields: syn::Fields::Unnamed(syn::FieldsUnnamed { unnamed: ref mut f, .. }), .. 

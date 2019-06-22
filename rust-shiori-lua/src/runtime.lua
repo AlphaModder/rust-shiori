@@ -50,7 +50,7 @@ local function init(init_module, searcher)
         local file, err = io.open(path, "r")
         if file == nil then return ("\n\t" .. err) end
         local script = interpolate.process_file(file:read("*all"))
-        local mod, err = load(script, path, "t", SCRIPT_ENV)
+        local mod, err = load(script, "@" .. path, "t", SCRIPT_ENV)
         file:close()
         return (not err and mod) or ("\n\t" .. err)
     end

@@ -29,14 +29,12 @@ function interface.ScriptInterface()
     return interface
 end
 
-local function _CharacterSet(chars)
+function interface.CharacterSet(chars)
     local meta = {
         __call = function(_, text) return script.current.say(chars, text, 1) end,
-        __add = function(rhs, lhs) return _CharacterSet(rhs.chars + lhs.chars) end
+        __add = function(rhs, lhs) return CharacterSet(rhs.chars + lhs.chars) end
     }
     return setmetatable({chars=chars}, meta)
 end
-
-function interface.CharacterSet(chars) return _CharacterSet(utils.Set{chars}) end
 
 return interface

@@ -60,7 +60,7 @@ function script.Script()
             elseif new_chars == Set{0, 1} or new_chars == Set{1, 0} then 
                 methods.write_command("_s")
             elseif #new_chars == 1 then
-                methods.write_command("p", utils.set_to_table(new_chars)[0]) 
+                methods.write_command("p", utils.set_to_table(new_chars)[1]) 
             else
                 methods.write_command("_s", table.unpack(utils.set_to_table(new_chars)))
             end
@@ -72,15 +72,12 @@ function script.Script()
         n = n or 1
         update_chars(characters)
 
-        -- Strip whitespace after non-sakura newlines for multiline strings
-        text = text:gsub("\n[\t ]+", "\n"):gsub("^[\t ]+", "")
-
-        local tokens = dtags.todtags(text)
+        local tags = dtags.todtags(text)
 
         local has_choice = false
-        for i, token in ipairs(tokens) do 
-            utils.extend(segments, token.to_sakura(i))
-            has_choice = has_choice or token.is_choice
+        for i, tag in ipairs(tags) do
+            utils.extend(segments, tag.to_sakura(i))
+            has_choice = has_choice or tag.is_choice
         end
         
         if has_choice then
@@ -88,7 +85,7 @@ function script.Script()
  
             if event == "OnChoiceSelect" then
                 local choice = tonumber(params[1]:match("Choice(%d+)"))
-                return tokens[choice].choose()
+                return tags[choice].choose()
             elseif event == "OnChoiceTimeout" then
                 return nil
             end
