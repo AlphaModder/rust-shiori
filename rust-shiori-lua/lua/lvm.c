@@ -1128,7 +1128,7 @@ void luaV_execute (lua_State *L) {
         vmbreak;
       }
       vmcase(OP_CALL) {
-        normcall: int b = GETARG_B(i);
+        int b = GETARG_B(i);
         int nresults = GETARG_C(i) - 1;
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
         if (luaD_precall(L, ra, nresults)) {  /* C function? */
@@ -1143,9 +1143,6 @@ void luaV_execute (lua_State *L) {
         vmbreak;
       }
       vmcase(OP_TAILCALL) {
-        if (clLvalue(ra)->notail) {
-          goto normcall;
-        }
         int b = GETARG_B(i);
         if (b != 0) L->top = ra+b;  /* else previous instruction set top */
         lua_assert(GETARG_C(i) - 1 == LUA_MULTRET);

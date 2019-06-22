@@ -34,7 +34,6 @@ LClosure *luaF_newLclosure (lua_State *L, int n) {
   GCObject *o = luaC_newobj(L, LUA_TLCL, sizeLclosure(n));
   LClosure *c = gco2lcl(o);
   c->p = NULL;
-  c->notail = 0;
   c->nupvalues = cast_byte(n);
   while (n--) c->upvals[n] = NULL;
   return c;

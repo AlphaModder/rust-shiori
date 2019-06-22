@@ -167,16 +167,6 @@ static const char *findlocal (lua_State *L, CallInfo *ci, int n,
   return name;
 }
 
-LUA_API int lua_notail (lua_State *L) {
-  lua_lock(L);
-  int status = 0;
-  if (isLfunction(L->top - 1)) {
-    clLvalue(L->top - 1)->notail = 1;
-    status = 1;
-  }
-  lua_unlock(L);
-  return status;
-} 
 
 LUA_API const char *lua_getlocal (lua_State *L, const lua_Debug *ar, int n) {
   const char *name;
