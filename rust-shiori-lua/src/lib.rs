@@ -58,9 +58,6 @@ impl LuaShiori {
             Self::create_lua_logger(&ctx)?;
             debug!("Lua logging interface loaded.");
 
-            // Self::add_notail_hack(&ctx)?;
-            // debug!("Installed tail-call prevention hack.");
-
             let searcher = ctx.make_searcher(include_lua!("[shiori libs]": "lib"))?;
             debug!("Lua libraries loaded.");
 

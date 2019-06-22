@@ -1,4 +1,4 @@
-local utils, logger, shiori, events, script, ScriptInterface
+local utils, events, script, ScriptInterface
 
 local interface = nil
 
@@ -12,15 +12,15 @@ local function init(init_module, searcher)
         return loaded[module] or error(("Could not load internal module %s!"):format(module))
     end
 
-    assert(debug.notail)
-
     utils = rsl_require("utils")
-    logger = rsl_require("logger")
-    events = rsl_require("shiori.events")
-    script = rsl_require("shiori.script")
-    dialect = rsl_require("shiori.dialect")
-    shiori = rsl_require("shiori")
-    ScriptInterface = rsl_require("shiori.interface")
+    events = rsl_require("events")
+    script = rsl_require("script")
+    ScriptInterface = rsl_require("shiori.interface").ScriptInterface
+
+    local logger = rsl_require("logger")
+    local interpolate = rsl_require("script.interpolate")
+    local dtags = rsl_require("script.dtags")
+    local shiori = rsl_require("shiori")
 
     local SCRIPT_ENV_META = {
         __index = function(table, key)
@@ -37,16 +37,21 @@ local function init(init_module, searcher)
         event = shiori.event,
         bad_request = shiori.bad_request,
         script_error = shiori.script_error,
-        f = dialect.substitute,
 
         choose = utils.choose,
+
+        _tags = dtags.public,
     }
 
     setmetatable(SCRIPT_ENV, SCRIPT_ENV_META)
     package.searchers[#package.searchers + 1] = function(module)
-        local file, err = package.searchpath(module, package.script_path)
-        if file == nil then return err end
-        local mod, err = loadfile(file, "bt", SCRIPT_ENV)
+        local path, err = package.searchpath(module, package.script_path)
+        if path == nil then return ("\n\t" .. err) end
+        local file, err = io.open(path, "r")
+        if file == nil then return ("\n\t" .. err) end
+        local script = interpolate.process_file(file:read("*all"))
+        local mod, err = load(script, path, "t", SCRIPT_ENV)
+        file:close()
         return (not err and mod) or ("\n\t" .. err)
     end
 

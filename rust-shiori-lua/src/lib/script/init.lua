@@ -1,18 +1,36 @@
-local utils = rsl_require("utils")
-local events = rsl_require("shiori.events")
-local dialect = rsl_require("shiori.dialect")
-local sakura = rsl_require("sakura")
+-- rust-shiori-lua's script system is built up in several layers. 
+-- In descending order, they are:
 
-local Set = utils.Set
+-- script (script.lua)
+-- Defines the script object, which wraps a writeable buffer of SakuraScript segments with
+-- various state-tracking functionality and utility methods during GET events.
+
+-- interpolate (interpolate.lua) 
+-- Preprocesses lua source files to enable the interpolation of dialogue tags directly into
+-- string literals. Called by the runtime when loading files from the ghost's script directory.
+
+-- dtags (dtags.lua)
+-- Defines an interface for 'dialogue tags', objects that can be serialized into fragments of
+-- SakuraScript and written to a script object.
+
+-- sakura (sakura.lua)
+-- Handles low-level parsing and cleaning of SakuraScript before it is sent to the host.
+
+local utils = rsl_require("utils")
+local events = rsl_require("events")
+local sakura = rsl_require("script.sakura")
+local dtags = rsl_require("script.dtags")
+local interpolate = rsl_require("script.interpolate")
 
 local script = {
     current = nil,
 }
 
+local Set = utils.Set
+
 function script.Script()
     local segments = {}
     local active_chars = Set{}
-    local in_choice_group = false
 
     local methods = {}
 
@@ -54,7 +72,10 @@ function script.Script()
         n = n or 1
         update_chars(characters)
 
-        local tokens = dialect.tokenize(text, n + 1)
+        -- Strip whitespace after non-sakura newlines for multiline strings
+        text = text:gsub("\n[\t ]+", "\n"):gsub("^[\t ]+", "")
+
+        local tokens = dtags.todtags(text)
 
         local has_choice = false
         for i, token in ipairs(tokens) do 
@@ -77,14 +98,6 @@ function script.Script()
     function methods.to_sakura() return sakura.write(segments) end
 
     return methods
-end
-
-function script.CharacterSet(chars)
-    local meta = {
-        __call = debug.notail(function(_, text) return script.current.say(chars, text, 1) end),
-        __add = function(rhs, lhs) return script.CharacterSet(rhs.chars + lhs.chars) end
-    }
-    return setmetatable({chars=chars}, meta)
 end
 
 return script

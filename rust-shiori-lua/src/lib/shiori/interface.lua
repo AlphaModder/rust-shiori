@@ -1,9 +1,10 @@
-local path = (...):gsub('%.init$', '')
+local utils = rsl_require("utils")
+local script = rsl_require("script")
+local input = rsl_require("shiori.input")
 
-local script = rsl_require("shiori.script")
-local input = rsl_require(path .. ".input")
+local interface = {}
 
-local function ScriptInterface()
+function interface.ScriptInterface()
     local interface = {}
     
     function interface.passive_mode(enable)
@@ -28,4 +29,14 @@ local function ScriptInterface()
     return interface
 end
 
-return ScriptInterface
+local function _CharacterSet(chars)
+    local meta = {
+        __call = function(_, text) return script.current.say(chars, text, 1) end,
+        __add = function(rhs, lhs) return _CharacterSet(rhs.chars + lhs.chars) end
+    }
+    return setmetatable({chars=chars}, meta)
+end
+
+function interface.CharacterSet(chars) return _CharacterSet(utils.Set{chars}) end
+
+return interface

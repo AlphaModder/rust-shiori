@@ -1,5 +1,5 @@
-local events = rsl_require("shiori.events")
-local script = rsl_require("shiori.script")
+local events = rsl_require("events")
+local script = rsl_require("script")
 
 local lua_type = type
 

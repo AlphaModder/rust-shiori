@@ -1,8 +1,6 @@
-local path = (...):gsub('%.init$', '')
-
 local utils = rsl_require("utils")
-local events = rsl_require(path .. ".events")
-local script = rsl_require(path .. ".script")
+local events = rsl_require("events")
+local interface = rsl_require("shiori.interface")
 
 local SYSTEM_EVENTS = {"OnUserInput", "OnUserInputCancel", "inputbox.autocomplete"}
 
@@ -11,7 +9,7 @@ local shiori = {
     resume_on_events = events.resume_on_events,
     set_event_preprocessor = events.set_event_preprocessor,
 
-    CharacterSet = function(...) return script.CharacterSet(utils.Set{...}) end,
+    CharacterSet = function(...) return interface.CharacterSet(utils.Set{...}) end,
 
     -- The main way for ghosts to register event handlers is by assigning to functions to this table.
     event = setmetatable({}, {

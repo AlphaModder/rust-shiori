@@ -1,0 +1,37 @@
+digraph RSL {
+    compound = true;
+    node [shape=box, color=grey40]
+    ranksep = 0.75
+
+    interface [label = "SHIORI interface" width=6.5]
+
+    subgraph cluster_logging {
+        node [style=invis]
+        edge [style=invis]
+        label = "Logging subsytem";
+        _logging->a->b
+    }
+
+    subgraph cluster_script {
+        label = "Script subsystem";
+        node [shape="ellipse" color=black]
+
+        script [shape="ellipse" color=black]
+        interpolate -> dtags -> sakura;
+        script -> {sakura, dtags};
+    }
+
+    subgraph cluster_events {
+        node [style=invis]
+        edge [style=invis]
+        label = "Events subsystem"
+        _events->c->d
+    }
+
+    script -> _events [lhead="cluster_events" constraint=false];
+
+    interface -> _events [lhead="cluster_events"];
+    interface -> _logging:nw [lhead="cluster_logging"];
+    interface -> script;
+    
+}
