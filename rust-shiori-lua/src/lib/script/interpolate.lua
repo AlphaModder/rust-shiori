@@ -14,6 +14,15 @@ local function prepare_string(str, open, close)
     return str, open, close
 end
 
+-- Because multiline strings ignore the first character after their open brace when it is a newline,
+-- splitting a multiline string can delete line breaks. This function duplicates all line breaks that
+-- follow such an open brace, except for the very first, which was present in the original and really
+-- should be ignored.
+local function fix_newlines(str, open)
+    local open_pat = open:gsub("%[", "%%[")
+    return str:gsub(open_pat .. "\n", open .. "\n\n"):gsub("^" .. open_pat .. "\n\n", open .. "\n")
+end
+
 local function expand_string(str, open, close, escapes)
     local str, open, close = prepare_string(str, open, close)
     for prefix, tags in pairs(dtags.TAGS) do
@@ -30,7 +39,7 @@ local function expand_string(str, open, close, escapes)
             return ("%s%s{%s}"):format(slashes, pfull, body)
         end)
     end
-    return ("(%s)"):format(str)
+    return ("(%s)"):format(fix_newlines(str, open))
 end
 
 local string_types = {
