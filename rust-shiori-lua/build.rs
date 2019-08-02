@@ -58,5 +58,6 @@ fn main() {
         .file("lua/lvm.c")
         .file("lua/lzio.c")
         .file("lua/utf8_wrappers.c")
+        .file("lua/eris.c")
         .compile("liblua5.3.a");
 }
