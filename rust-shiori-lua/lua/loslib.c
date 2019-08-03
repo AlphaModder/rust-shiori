@@ -16,9 +16,9 @@
 #include <string.h>
 #include <time.h>
 
+#include "lauxlib.h"
 #include "lua.h"
 
-#include "lauxlib.h"
 #include "lualib.h"
 
 
