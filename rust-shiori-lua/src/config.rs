@@ -16,7 +16,7 @@ pub struct Lua {
     pub init: String,
     pub script_path: Vec<PathBuf>,
     pub library_path: Vec<PathBuf>,
-    pub persistent: PathBuf,
+    pub persistent: String, // TODO: Make this a path
 }
 
 #[derive(Deserialize)]

@@ -2,7 +2,7 @@ local utils, events, script, ScriptInterface
 
 local interface = nil
 
-local function init(init_module, searcher)
+local function init(init_module, searcher, persistent_path)
     local loaded = {}
     _G.rsl_require = function(module)
         if not loaded[module] then
@@ -21,6 +21,9 @@ local function init(init_module, searcher)
     local interpolate = rsl_require("script.interpolate")
     local dtags = rsl_require("script.dtags")
     local shiori = rsl_require("shiori")
+    local persistent = rsl_require("persistent")
+
+    persistent.path = persistent_path
 
     local SCRIPT_ENV_META = {
         __index = function(table, key)
@@ -64,7 +67,7 @@ local function resume_script(routine, id, event, method)
     if method == "GET" then script.current = script.Script() else script.current = nil end
     interface = script.current and ScriptInterface()
 
-    local s, e = coroutine.resume(routine, id, event) -- Deal with packing stuff here
+    local s, e = coroutine.resume(routine, id, event)
     if not s then
         if e == "cannot resume dead coroutine" then
             return { text = "Attempt to resume a script that has already ended.", code = 500 }

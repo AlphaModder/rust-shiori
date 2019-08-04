@@ -8,9 +8,17 @@ function events.push_event_handler(event, func)
     table.insert(events.event_handlers[event], 1, func)
 end
 
+function events.push_static_event_handler(event, func)
+    events.push_event_handler(event, function(_)
+        -- strip the event ID from arguments
+        local expand_params = function(_, params) return handler(table.unpack(params)) end
+        return coroutine.create(expand_params), false 
+    end)
+end
+
 function events.resume_on_event(event, filter)
     if filter == nil then filter = function(...) return true end end
-    local _, params = shiori.resume_on_events({[event] = filter})
+    local _, params = events.resume_on_events({[event] = filter})
     return table.unpack(params)
 end
 
