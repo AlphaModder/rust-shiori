@@ -17,7 +17,7 @@ return {
                 file:close()
             end
             if data then 
-                persistent_data = eris.unpersist(persistent.data) 
+                persistent.data = eris.unpersist(data) 
             else
                 logger.warn("Failed to load persistent data: %s %s", err, code)
             end

@@ -44,6 +44,11 @@ end
 - For a list of the events supported by `rust-shiori-lua` out of the box, and their function signatures, see [here](./event_list.md).
 - For details on adding support for custom events or changing the way parameters are passed, see the documentation for [`shiori.set_event_preprocessor`](#set_event_preprocessor) below.
 
+## Persistence
+All keys of the global table `persistent` are saved to disk when the ghost is exited, and loaded from disk before any user code runs. You may leverage this to save data across sessions, but remember to check for `nil`s, as `persistent` will be empty the first time the user boots the ghost.
+
+Currently, user code cannot manually save or load persistent data, but this feature may be added in the future.
+
 ## Logging
 - `log(level, text, ...)`  
   Sends a log entry with level `level` to the rust-shiori-lua log file. The entry will contain the current line and file, as well as a message obtained by passing `text` and any further arguments to `string.format`. `log` is a global function.
@@ -91,9 +96,4 @@ These functions allow the implementation of more complex event-handling patterns
   When `rust-shiori-lua` recieves an event, it first passes a table whose key-value pairs contain the event's raw SHIORI headers to the preprocessor with the corresponding ID. The preprocessor must then return a sequence of values, which are passed to matching event handlers as function arguments. 
  
   If you are using custom events, or wish to alter the format in which a default event is passed to handlers, you can use this function to install a new preprocessor.
-  
-## Persistence
-All keys of the global table `persistent` are saved to disk when the ghost is exited, and loaded from disk before any user code runs. You may leverage this to save data across sessions, but remember to check for `nil`s, as `persistent` will be empty the first time the user boots the ghost.
-
-Currently, user code cannot manually save or load persistent data, but this feature may be added in the future.
 

@@ -74,7 +74,7 @@ impl LuaShiori {
             let searcher = ctx.make_searcher(include_lua!("[shiori libs]": "lib"))?;
             debug!("Lua libraries loaded.");
 
-            let runtime: Table = ctx.load(include_str!("runtime.lua")).set_name("shiori runtime")?.call(())?;
+            let responder_ctor: Function = ctx.load(include_str!("runtime.lua")).set_name("shiori runtime")?.call(())?;
             debug!("Lua runtime loaded.");
 
             Self::set_lua_paths(&ctx, &path, &config)?;
@@ -86,7 +86,7 @@ impl LuaShiori {
                 persistent_path: &config.lua.persistent,
             };
 
-            let responder = runtime.get::<_, Function>("Responder")?.call::<_, Function>(init_params)?;
+            let responder = responder_ctor.call::<_, Function>(init_params)?;
             let responder_key = ctx.create_registry_value(responder)?;
             debug!("Responder created.");
 

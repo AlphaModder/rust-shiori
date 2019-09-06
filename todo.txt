@@ -1,0 +1,3 @@
+- Prevent resume_on_event and other calls in NOTIFY environment?
+- Decide if user code should be able to save/load persistent data.
+- Document string interpolation.

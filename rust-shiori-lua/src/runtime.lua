@@ -2,7 +2,7 @@ local ok_codes = { GET = 200, NOTIFY = 204 }
 
 local function Responder(init_module, searcher, persistent_path)
     local loaded_rsl_modules = {}
-    function _G.rsl_require()
+    function _G.rsl_require(module)
         if not loaded_rsl_modules[module] then
             local loader = searcher(module)
             if loader then loaded_rsl_modules[module] = loader(module) end
@@ -97,7 +97,7 @@ local function Responder(init_module, searcher, persistent_path)
             if preprocessor then procevent = table.pack(preprocessor(event)) end
             local handlers = events.event_handlers[event["ID"]] or {}
             local routine = nil
-            for i, handlers in ipairs(handlers) do
+            for i, handler in ipairs(handlers) do
                 local remove
                 routine, remove = handler(procevent)
                 if remove then handlers[i] = nil end
