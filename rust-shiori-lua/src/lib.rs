@@ -25,6 +25,7 @@ use simplelog::{WriteLogger, Config as LogConfig};
 mod os_str;
 mod config;
 mod error;
+mod eris;
 
 use self::config::Config;
 use self::error::*;
@@ -64,7 +65,8 @@ impl LuaShiori {
             debug!("Logging successfully initialized.");
         }
 
-        let lua = unsafe { Lua::new_with_debug() }; // Debug for fstrings. Not present in script environment.
+        let mut lua = unsafe { Lua::new_with_debug() }; // Debug is used for error reporting.
+        eris::load_eris(&mut lua);
         let responder = lua.context(|ctx| -> Result<_, LoadError> {
             Self::create_lua_logger(&ctx)?;
             debug!("Lua logging interface loaded.");
@@ -75,22 +77,20 @@ impl LuaShiori {
             let runtime: Table = ctx.load(include_str!("runtime.lua")).set_name("shiori runtime")?.call(())?;
             debug!("Lua runtime loaded.");
 
-            let responder = ctx.create_registry_value(runtime.get::<_, Function>("respond")?)?;
-            debug!("Responder function created.");
-
             Self::set_lua_paths(&ctx, &path, &config)?;
             debug!("Lua search paths set.");
-            
+
             let init_params = ShioriInit { 
                 init: &config.lua.init, 
                 searcher: searcher, 
                 persistent_path: &config.lua.persistent,
             };
 
-            runtime.get::<_, Function>("init")?.call(init_params)?;
-            debug!("Lua initialization complete.");
+            let responder = runtime.get::<_, Function>("Responder")?.call::<_, Function>(init_params)?;
+            let responder_key = ctx.create_registry_value(responder)?;
+            debug!("Responder created.");
 
-            Ok(responder)
+            Ok(responder_key)
         })?;
 
         info!("SHIORI load complete.");

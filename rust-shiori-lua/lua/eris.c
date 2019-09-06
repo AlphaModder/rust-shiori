@@ -2712,6 +2712,12 @@ LUA_API int luaopen_eris(lua_State *L) {
   return 1;
 }
 
+// rust-shiori-lua: remove when rlua supports custom C libraries
+LUA_API int rsl_loaderis(lua_State *L) {
+  luaL_requiref(L, LUA_ERISLIBNAME, luaopen_eris, 1);
+  lua_pop(L, 1);
+}
+
 /* }======================================================================== */
 
 /*

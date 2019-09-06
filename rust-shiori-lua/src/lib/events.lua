@@ -11,7 +11,7 @@ end
 function events.push_static_event_handler(event, func)
     events.push_event_handler(event, function(_)
         -- strip the event ID from arguments
-        local expand_params = function(_, params) return handler(table.unpack(params)) end
+        local expand_params = function(_, params) return func(table.unpack(params)) end
         return coroutine.create(expand_params), false 
     end)
 end

@@ -28,12 +28,12 @@ local shiori = {
 
 function shiori.bad_request(message, level)
     level = level or 1
-    error({text=message or "", code=400}, 1 + level)
+    error({message=message or "", code=400}, 1 + level)
 end
 
 function shiori.script_error(message, level)
     level = level or 1
-    error({text=message or "", code=500}, 1 + level)
+    error({message=message or "", code=500}, 1 + level)
 end
 
 return shiori
