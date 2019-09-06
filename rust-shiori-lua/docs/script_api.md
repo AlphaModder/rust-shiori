@@ -40,6 +40,10 @@ function event.OnGhostChanged(prev_sakura_name, prev_script, prev_name, prev_pat
 end
 ```
 
+- For a  list of the events SSP (the most popular program for running ghosts) supports, see [UKADOC Project SHIORI EVENT リスト](http://ssp.shillest.net/ukadoc/manual/list_shiori_event.html). This document is in Japanese, but is comprehensible when run through Google Translate.
+- For a list of the events supported by `rust-shiori-lua` out of the box, and their function signatures, see [here](./event_list.md).
+- For details on adding support for custom events or changing the way parameters are passed, see the documentation for [`shiori.set_event_preprocessor`](#set_event_preprocessor) below.
+
 ## Logging
 - `log(level, text, ...)`  
   Sends a log entry with level `level` to the rust-shiori-lua log file. The entry will contain the current line and file, as well as a message obtained by passing `text` and any further arguments to `string.format`. `log` is a global function.
@@ -80,13 +84,16 @@ These functions allow the implementation of more complex event-handling patterns
   Note that `resume_on_events` takes priority over previously-registered handlers, such that the script will be resumed *instead* of the normal handler being called, if any exists. 
 
 - `shiori.resume_on_event(event, [filter])`  
-  Pauses the script at its current point of execution, and waits for an event with ID `event` that passes the filter function `filter` to occur before resuming. If `filter` is omitted, resumes unconditionally. See `resume_on_events` above for definition of a filter function.
+  Pauses the script at its current point of execution, and waits for an event with ID `event` that passes the filter function `filter` to occur before resuming. If `filter` is omitted, resumes unconditionally. See `resume_on_events` above for the definition of a filter function.
 
-- `shiori.set_event_preprocessor(event, preprocessor)`  
+- <a id="set_event_preprocessor"></a> `shiori.set_event_preprocessor(event, preprocessor)`  
   Updates the preprocessor for events with ID `event` to be the function specified by `preprocessor`.
   When `rust-shiori-lua` recieves an event, it first passes a table whose key-value pairs contain the event's raw SHIORI headers to the preprocessor with the corresponding ID. The preprocessor must then return a sequence of values, which are passed to matching event handlers as function arguments. 
  
   If you are using custom events, or wish to alter the format in which a default event is passed to handlers, you can use this function to install a new preprocessor.
   
-  
+## Persistence
+All keys of the global table `persistent` are saved to disk when the ghost is exited, and loaded from disk before any user code runs. You may leverage this to save data across sessions, but remember to check for `nil`s, as `persistent` will be empty the first time the user boots the ghost.
+
+Currently, user code cannot manually save or load persistent data, but this feature may be added in the future.
 
